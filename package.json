@@ -1,0 +1,12 @@
+{
+  "name": "shirley-shark",
+  "version": "1.0.0",
+  "description": "Shirley & the Shark — a B1 English classroom game with a teacher panel (Node + SQLite, zero dependencies)",
+  "private": true,
+  "main": "server.js",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node --no-warnings server.js"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shirley & the Shark</title>
+<link rel="preload" as="image" href="shark.svg">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Nunito:wght@500;700;800;900&display=swap">
+<style>
+  :root{
+    --sky1:#BDEBF7; --sky2:#E9FAFF;
+    --sea1:#2BA8BF; --sea2:#1489A5; --sea3:#0A5A73;
+    --sand:#F3D48E; --sand2:#E8BF6E;
+    --foam:#F4FBFD; --ink:#0E3446; --ink-soft:#3E6478;
+    --coral:#FF6A4D; --coral-dark:#E04E33;
+    --good:#2FAE7B; --good-dark:#22996a;
+    --chip:#FFFFFF;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'Nunito',system-ui,sans-serif;
+    color:var(--ink);
+    background:var(--sky2);
+    overflow:hidden;
+  }
+  .game{
+    height:100dvh; min-height:540px;
+    display:flex; flex-direction:column;
+    background:linear-gradient(180deg,var(--sky1) 0%,var(--sky2) 55%);
+    position:relative; overflow:hidden;
+  }
+
+  /* ==================== HUD ==================== */
+  .hud{
+    position:absolute; top:0; left:0; right:0; z-index:30;
+    display:flex; align-items:center; gap:10px;
+    padding:14px 16px; flex-wrap:wrap;
+  }
+  .logo{
+    font-family:'Unbounded',sans-serif; font-weight:700; font-size:15px;
+    letter-spacing:.02em; color:var(--ink);
+    background:var(--chip); border-radius:999px; padding:8px 16px;
+    box-shadow:0 3px 0 rgba(14,52,70,.14);
+  }
+  .chip{
+    background:var(--chip); border-radius:999px; padding:8px 14px;
+    font-weight:800; font-size:14px; color:var(--ink);
+    box-shadow:0 3px 0 rgba(14,52,70,.14);
+    display:flex; align-items:center; gap:7px;
+    font-variant-numeric:tabular-nums;
+  }
+  .chip .num{color:var(--coral-dark)}
+  .chip.good .num{color:var(--good-dark)}
+  .chip .dots{display:flex; gap:3px}
+  .chip .dot{width:9px; height:9px; border-radius:50%; background:#F0B9AD; transition:background .3s, transform .3s}
+  .chip .dot.on{background:var(--coral)}
+  .chip.player{max-width:220px}
+  .chip.player span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .hud-right{margin-left:auto; display:flex; gap:8px}
+  .icon-btn{
+    border:0; cursor:pointer;
+    background:var(--chip); border-radius:999px; height:38px; min-width:38px; padding:0 12px;
+    font-size:17px; box-shadow:0 3px 0 rgba(14,52,70,.14);
+    font-family:'Nunito',sans-serif; font-weight:800; color:var(--ink);
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .icon-btn.teacher{background:var(--ink); color:#fff; font-size:14px; box-shadow:0 3px 0 #061a24}
+  .icon-btn[hidden]{display:none}
+  .icon-btn:focus-visible,.opt:focus-visible,.big-btn:focus-visible,.name-input:focus-visible,.ghost-btn:focus-visible{outline:3px solid var(--coral); outline-offset:2px}
+
+  /* ==================== SCENE ==================== */
+  .scene{position:relative; flex:1 1 58%; min-height:230px; overflow:hidden}
+
+  .sun{
+    position:absolute; top:7%; right:24%;
+    width:88px; height:88px; border-radius:50%;
+    background:radial-gradient(circle at 36% 32%,#FFF8D6,#FFDE7A 58%,#FFC64B);
+    box-shadow:0 0 34px 10px rgba(255,214,110,.55), 0 0 0 18px rgba(255,220,120,.22), 0 0 0 40px rgba(255,220,120,.1);
+    animation:sunpulse 6s ease-in-out infinite;
+  }
+  .sun::after{
+    content:""; position:absolute; inset:-46px; border-radius:50%;
+    background:repeating-conic-gradient(rgba(255,226,130,.16) 0 9deg, transparent 9deg 24deg);
+    animation:sunrays 40s linear infinite;
+  }
+  @keyframes sunpulse{50%{transform:scale(1.04)}}
+  @keyframes sunrays{to{transform:rotate(360deg)}}
+
+  .cloud{
+    position:absolute;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 80'%3E%3Cpath d='M32 72 C 12 72 6 58 14 46 C 6 30 22 20 36 24 C 40 8 62 2 76 10 C 88 -2 112 0 120 12 C 138 4 158 12 160 28 C 178 26 192 38 188 52 C 198 60 190 72 174 72 Z' fill='white'/%3E%3C/svg%3E");
+    background-size:contain; background-repeat:no-repeat;
+    animation:drift linear infinite alternate;
+  }
+  .c1{top:12%; left:6%; width:150px; height:55px; opacity:.95; animation-duration:46s}
+  .c2{top:5%; left:48%; width:100px; height:37px; opacity:.75; animation-duration:64s}
+  .c3{top:22%; left:70%; width:70px; height:26px; opacity:.55; animation-duration:38s}
+  @keyframes drift{from{transform:translateX(-4vw)}to{transform:translateX(9vw)}}
+
+  .boat{
+    position:absolute; bottom:57.4%; left:38%; width:52px; z-index:1;
+    animation:boatsail 70s ease-in-out infinite alternate;
+  }
+  .boat svg{display:block; width:100%; animation:boatbob 4.2s ease-in-out infinite}
+  @keyframes boatsail{from{transform:translateX(-14vw)}to{transform:translateX(16vw)}}
+  @keyframes boatbob{50%{transform:translateY(-4px) rotate(-2.5deg)}}
+
+  .sea{
+    position:absolute; left:0; right:0; bottom:0; height:58%; z-index:2;
+    background:linear-gradient(180deg,#17A0B8 0%,#0C6B85 46%,#07434F 100%);
+  }
+  .wave{
+    position:absolute; left:0; right:0;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 60'%3E%3Crect y='40' width='240' height='20' fill='%2317A0B8'/%3E%3Cpath d='M0 22 Q 60 10 120 22 T 240 22 L240 60 L0 60 Z' fill='%2385DCE8'/%3E%3Cpath d='M0 33 Q 60 23 120 33 T 240 33 L240 60 L0 60 Z' fill='%233FB9CE'/%3E%3Cpath d='M0 45 Q 60 37 120 45 T 240 45 L240 60 L0 60 Z' fill='%2317A0B8'/%3E%3C/svg%3E");
+    background-repeat:repeat-x;
+  }
+  .wave.w-back{
+    top:-40px; height:44px; background-size:176px 44px; opacity:.5;
+    animation:waveBack 30s linear infinite;
+  }
+  .wave.w-front{
+    top:-22px; height:60px; background-size:240px 60px;
+    animation:waveFront 13s linear infinite;
+  }
+  @keyframes waveBack{to{background-position-x:176px}}
+  @keyframes waveFront{to{background-position-x:-240px}}
+
+  .caustics{
+    position:absolute; inset:0; pointer-events:none; opacity:.5;
+    background:
+      radial-gradient(ellipse 30% 18% at 18% 34%, rgba(180,240,250,.16), transparent 70%),
+      radial-gradient(ellipse 26% 15% at 52% 55%, rgba(180,240,250,.11), transparent 70%),
+      radial-gradient(ellipse 32% 20% at 82% 40%, rgba(180,240,250,.13), transparent 70%);
+    animation:caustics 9s ease-in-out infinite alternate;
+  }
+  @keyframes caustics{to{transform:translateX(3%) scaleY(1.06); opacity:.75}}
+  .fish-school{
+    position:absolute; top:46%; left:100%; width:100px; opacity:.85;
+    animation:fishswim 34s linear infinite;
+  }
+  .fish-school svg{display:block; width:100%; animation:fishbob 3.5s ease-in-out infinite}
+  @keyframes fishswim{from{transform:translateX(0)}to{transform:translateX(calc(-100vw - 140px))}}
+  @keyframes fishbob{50%{transform:translateY(-6px)}}
+  .sea-shimmer{
+    position:absolute; top:2%; right:18%; width:20%; height:46%;
+    background:radial-gradient(ellipse 46% 50% at 50% 30%, rgba(255,236,170,.4), transparent 70%);
+    animation:shimmer 5.5s ease-in-out infinite; pointer-events:none;
+  }
+  @keyframes shimmer{50%{opacity:.55; transform:scaleY(1.12)}}
+  .twinkle{
+    position:absolute; width:11px; height:11px; background:#fff; opacity:0;
+    clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%);
+    animation:twinkle 4.6s ease-in-out infinite;
+  }
+  .twinkle.t1{top:16%; left:24%}
+  .twinkle.t2{top:9%;  left:55%; animation-delay:1.3s; width:8px; height:8px}
+  .twinkle.t3{top:26%; left:44%; animation-delay:2.4s; width:9px; height:9px}
+  .twinkle.t4{top:13%; left:70%; animation-delay:3.4s}
+  @keyframes twinkle{0%,100%{opacity:0; transform:scale(.3) rotate(0deg)}50%{opacity:.85; transform:scale(1) rotate(20deg)}}
+
+  .beach{
+    position:absolute; right:0; bottom:0; width:26%; min-width:170px; height:54%; z-index:6;
+  }
+  .beach .sand{position:absolute; inset:0; width:100%; height:100%; display:block}
+  .beach .sand .foam-e{animation:foamPulse 3.8s ease-in-out infinite}
+  .beach .sand .foam-e:nth-child(2){animation-delay:1.1s}
+  .beach .sand .foam-e:nth-child(3){animation-delay:2.2s}
+  .beach .sand .foam-e:nth-child(4){animation-delay:3s}
+  @keyframes foamPulse{50%{opacity:.2; transform:translate(-5px,3px)}}
+  .beach .sand .foam-line{animation:foamSlide 6s linear infinite}
+  @keyframes foamSlide{to{stroke-dashoffset:-60}}
+  .beach .palm{
+    position:absolute; right:5%; bottom:30%; width:clamp(84px,9.5vw,132px);
+  }
+  .beach .palm svg{display:block; width:100%}
+  .palm-crown{transform-box:fill-box; transform-origin:52% 86%; animation:palmsway 5.2s ease-in-out infinite}
+  @keyframes palmsway{50%{transform:rotate(-3deg)}}
+  .beach .flag{
+    position:absolute; left:14%; bottom:58%;
+    font-family:'Unbounded',sans-serif; font-weight:700; font-size:clamp(10px,1.3vw,13px);
+    background:#fff; color:var(--ink); border-radius:10px; padding:5px 9px;
+    box-shadow:0 3px 0 rgba(14,52,70,.15); transform:rotate(-4deg); white-space:nowrap;
+  }
+
+  /* ==================== CHARACTERS ==================== */
+  .actor{position:absolute; z-index:10; transform:translateX(-50%); transition:left 1s cubic-bezier(.5,1.5,.4,1), bottom .8s ease}
+  #shirley{bottom:38%; width:clamp(58px,8.5vw,92px); left:20%}
+  #shirley .bob{animation:bob 2.6s ease-in-out infinite}
+  @keyframes bob{50%{transform:translateY(-7px) rotate(-3deg)}}
+  #shirley.paddle .bob{animation:paddle .5s ease 2}
+  @keyframes paddle{40%{transform:translateY(-12px) rotate(-9deg)}}
+  #shirley.gone{opacity:0; transform:translateX(-50%) translateY(30px) scale(.1); transition:all .55s ease-in}
+  #shirley.dance .bob{animation:dance .55s ease-in-out infinite}
+  @keyframes dance{50%{transform:translateY(-16px) rotate(6deg)}}
+
+  #shark{bottom:30%; width:clamp(104px,15vw,176px); left:-5%; z-index:9; transform:translateX(-100%)}
+  #shark .swim{animation:sharkbob 3.4s ease-in-out infinite; will-change:transform}
+  @keyframes sharkbob{50%{transform:translateY(-8px) rotate(2.5deg)}}
+  .shark-rig{position:relative; transform-origin:68% 58%; animation:sharksway 5.6s ease-in-out infinite}
+  @keyframes sharksway{33%{transform:rotate(-1.6deg) translateX(2px)}66%{transform:rotate(1.2deg) translateX(-2px)}}
+  .shark-img{display:block; width:100%; filter:drop-shadow(0 12px 9px rgba(5,40,60,.28)); transition:transform .5s ease}
+  .shark-img svg,.shark-img img{display:block; width:100%; height:auto}
+  /* живые части акулы (классы проставлены в shark.svg) */
+  .shark-svg path{transform-box:view-box}
+  .shark-svg .p-tail{transform-origin:15% 39%; animation:tailwag 1.9s ease-in-out infinite}
+  @keyframes tailwag{50%{transform:rotate(4.5deg)}}
+  .shark-svg .p-finL{transform-origin:32% 70%; animation:finwagL 2.8s ease-in-out infinite}
+  @keyframes finwagL{50%{transform:rotate(-4deg)}}
+  .shark-svg .p-finR{transform-origin:79% 80%; animation:finwagR 2.3s ease-in-out .5s infinite}
+  @keyframes finwagR{50%{transform:rotate(3.5deg)}}
+  #shark.lunge .p-tail{animation-duration:.45s}
+  #shark.fed .p-tail{animation-duration:3.2s}
+  #shark.mouth-open .p-glasses{animation:glassbounce .5s ease}
+  @keyframes glassbounce{35%{transform:translateY(-8px) rotate(-2deg)}65%{transform:translateY(-2px)}}
+  .shark-bubbles i{
+    position:absolute; left:8%; bottom:18%; width:7px; height:7px; border-radius:50%;
+    border:2px solid rgba(255,255,255,.75); opacity:0; animation:sharkbub 4.6s linear infinite;
+  }
+  .shark-bubbles i:nth-child(2){left:14%; width:5px; height:5px; animation-delay:1.7s; animation-duration:5.4s}
+  .shark-bubbles i:nth-child(3){left:2%; width:9px; height:9px; animation-delay:3.1s; animation-duration:6.2s}
+  @keyframes sharkbub{0%{opacity:0; transform:translate(0,0)}12%{opacity:.9}100%{opacity:0; transform:translate(8px,-95px)}}
+  .shark-glint{
+    position:absolute; left:76%; top:31%; width:15px; height:15px; background:#fff; pointer-events:none; opacity:0;
+    clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);
+    animation:sharkglint 7s ease-in-out infinite;
+  }
+  @keyframes sharkglint{0%,84%,100%{opacity:0; transform:scale(.2) rotate(0deg)}89%{opacity:1; transform:scale(1.15) rotate(25deg)}94%{opacity:0; transform:scale(.3) rotate(50deg)}}
+  #shark.lunge{transition:left .55s cubic-bezier(.4,1.6,.5,1)}
+  #shark.lunge .swim{animation:sharklunge .7s cubic-bezier(.3,1.4,.4,1)}
+  @keyframes sharklunge{30%{transform:translateY(-22px) rotate(-9deg) scale(1.1)}60%{transform:translateY(-6px) rotate(3deg) scale(1.04)}}
+  #shark.mouth-open .shark-rig{animation:sharkbite .5s cubic-bezier(.4,1.8,.5,1)}
+  @keyframes sharkbite{30%{transform:rotate(8deg) scale(1.06,.9)}60%{transform:rotate(-13deg) scale(.96,1.12)}}
+  #shark.fed .shark-img{transform:scale(1.07,1.12); transform-origin:50% 72%}
+  #shark.fed .swim{animation:sharkfedbob 1.2s ease-in-out infinite}
+  @keyframes sharkfedbob{50%{transform:translateY(-5px) rotate(-4deg)}}
+
+  .burst{
+    position:absolute; z-index:25; transform:translate(-50%,-50%) scale(0);
+    font-family:'Unbounded',sans-serif; font-weight:700; color:#fff;
+    background:var(--coral); padding:14px 22px; border-radius:18px;
+    font-size:clamp(18px,3vw,28px); box-shadow:0 5px 0 var(--coral-dark);
+    pointer-events:none;
+  }
+  .burst.show{animation:pop .8s cubic-bezier(.3,1.8,.5,1) forwards}
+  @keyframes pop{60%{transform:translate(-50%,-50%) scale(1.15) rotate(-4deg)}100%{transform:translate(-50%,-50%) scale(1) rotate(-4deg)}}
+  .bubble{
+    position:absolute; z-index:25; opacity:0;
+    background:#fff; color:var(--ink); font-weight:800; font-size:15px;
+    padding:10px 14px; border-radius:16px 16px 16px 4px;
+    box-shadow:0 4px 0 rgba(14,52,70,.15);
+  }
+  .bubble.show{opacity:1; animation:rise 2.4s ease forwards}
+  @keyframes rise{from{transform:translateY(8px)}to{transform:translateY(-14px)}}
+
+  .splash{position:absolute; z-index:24; pointer-events:none}
+  .splash::before{
+    content:""; position:absolute; left:-8px; top:-8px; width:16px; height:16px;
+    border-radius:50%; border:3px solid rgba(255,255,255,.85);
+    animation:splashRing .55s ease-out forwards;
+  }
+  @keyframes splashRing{to{transform:scale(4.5); opacity:0}}
+  .splash i{
+    position:absolute; left:0; top:0; border-radius:50% 50% 60% 60%;
+    background:linear-gradient(180deg,#FFFFFF,#BFE9F2);
+    box-shadow:0 0 4px rgba(255,255,255,.5);
+    animation:splashFly var(--t) cubic-bezier(.2,.55,.45,1) forwards;
+  }
+  @keyframes splashFly{
+    0%{transform:translate(0,0) scale(1); opacity:.95}
+    70%{opacity:.9}
+    100%{transform:translate(var(--dx),var(--dy)) scale(.25); opacity:0}
+  }
+  .shake{animation:shake .5s ease}
+  @keyframes shake{20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+
+  .confetti{position:absolute; width:10px; height:14px; top:-20px; z-index:40; animation:fall linear forwards}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+
+  /* ==================== QUESTION PANEL ==================== */
+  .panel-wrap{flex:0 0 auto; padding:0 14px 16px; z-index:20; position:relative}
+  .panel{
+    max-width:680px; margin:-30px auto 0;
+    background:var(--foam); border-radius:22px;
+    box-shadow:0 8px 0 rgba(10,90,115,.25), 0 20px 40px rgba(10,90,115,.25);
+    padding:18px 20px 16px; transform:rotate(-.4deg);
+  }
+  .panel-top{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px}
+  .word-tag{
+    font-family:'Unbounded',sans-serif; font-weight:700; font-size:clamp(17px,2.6vw,22px);
+    color:#fff; background:var(--sea2); padding:6px 16px; border-radius:12px;
+    letter-spacing:.03em; text-transform:uppercase;
+    box-shadow:0 4px 0 var(--sea3);
+  }
+  .word-count{font-weight:800; color:var(--ink-soft); font-size:13px}
+  .sentence{font-size:clamp(15px,2.2vw,18px); font-weight:700; line-height:1.45; margin-bottom:12px}
+  .sentence .gap{
+    display:inline-block; min-width:74px; border-bottom:3px dotted var(--coral);
+    text-align:center; color:var(--coral-dark); font-weight:900;
+  }
+  .opts{display:grid; grid-template-columns:1fr 1fr; gap:9px}
+  .opts.three .opt:nth-child(3){grid-column:1 / -1}
+  .opt{
+    border:0; cursor:pointer; font-family:'Nunito',sans-serif;
+    font-weight:800; font-size:clamp(14px,2vw,16px); color:var(--ink);
+    background:#fff; border-radius:14px; padding:11px 10px;
+    box-shadow:0 4px 0 rgba(14,52,70,.16);
+    transition:transform .12s, box-shadow .12s, background .2s, color .2s;
+  }
+  .opt:hover:not(:disabled){transform:translateY(-2px); box-shadow:0 6px 0 rgba(14,52,70,.16)}
+  .opt:active:not(:disabled){transform:translateY(2px); box-shadow:0 2px 0 rgba(14,52,70,.16)}
+  .opt:disabled{cursor:default}
+  .opt.correct{background:var(--good); color:#fff; box-shadow:0 4px 0 var(--good-dark)}
+  .opt.wrong{background:var(--coral); color:#fff; box-shadow:0 4px 0 var(--coral-dark); animation:shake .45s ease}
+  .feedback{
+    min-height:44px; margin-top:11px; font-size:14px; font-weight:700;
+    line-height:1.4; color:var(--ink-soft);
+  }
+  .feedback b{color:var(--ink)}
+  .feedback.ok b{color:var(--good-dark)}
+  .feedback.bad b{color:var(--coral-dark)}
+
+  /* ==================== OVERLAYS ==================== */
+  .overlay{
+    position:absolute; inset:0; z-index:50;
+    background:rgba(10,60,80,.45); backdrop-filter:blur(3px);
+    display:flex; align-items:center; justify-content:center; padding:18px;
+    overflow:auto;
+  }
+  .overlay[hidden]{display:none}
+  .card{
+    background:var(--foam); border-radius:26px; max-width:520px; width:100%;
+    padding:30px 28px; text-align:center;
+    box-shadow:0 10px 0 rgba(10,90,115,.3), 0 30px 60px rgba(5,40,55,.4);
+    animation:cardin .5s cubic-bezier(.3,1.5,.5,1);
+    margin:auto;
+  }
+  @keyframes cardin{from{transform:translateY(30px) scale(.92); opacity:0}}
+  .card h1{
+    font-family:'Unbounded',sans-serif; font-weight:700;
+    font-size:clamp(21px,4vw,30px); margin-bottom:12px; text-wrap:balance;
+  }
+  .card h2{font-family:'Unbounded',sans-serif; font-weight:700; font-size:15px; margin:18px 0 10px; text-align:left}
+  .card p{font-size:15px; font-weight:600; line-height:1.55; color:var(--ink-soft); margin-bottom:10px}
+  .card p b{color:var(--ink)}
+  .card .emo{font-size:46px; line-height:1; margin-bottom:10px}
+  .rules{display:flex; flex-direction:column; gap:8px; text-align:left; margin:16px 0 18px}
+  .rule{display:flex; gap:10px; align-items:flex-start; font-size:14px; font-weight:700; line-height:1.4}
+  .rule .ico{flex:0 0 auto; width:30px; height:30px; border-radius:10px; display:grid; place-items:center; font-size:16px; background:#fff; box-shadow:0 3px 0 rgba(14,52,70,.12)}
+  .big-btn{
+    border:0; cursor:pointer; font-family:'Unbounded',sans-serif; font-weight:700;
+    font-size:16px; color:#fff; background:var(--coral);
+    padding:14px 34px; border-radius:999px; box-shadow:0 5px 0 var(--coral-dark);
+    transition:transform .12s, box-shadow .12s; margin-top:6px;
+  }
+  .big-btn:hover{transform:translateY(-2px); box-shadow:0 7px 0 var(--coral-dark)}
+  .big-btn:active{transform:translateY(3px); box-shadow:0 2px 0 var(--coral-dark)}
+  .big-btn:disabled{opacity:.6; cursor:wait; transform:none}
+  .ghost-btn{
+    border:0; cursor:pointer; font-family:'Nunito',sans-serif; font-weight:800; font-size:14px;
+    color:var(--ink); background:#fff; padding:11px 18px; border-radius:999px;
+    box-shadow:0 4px 0 rgba(14,52,70,.16);
+  }
+  .ghost-btn.danger{color:#fff; background:var(--coral); box-shadow:0 4px 0 var(--coral-dark)}
+  .stats{display:flex; justify-content:center; gap:12px; margin:14px 0 8px; flex-wrap:wrap}
+  .stat{background:#fff; border-radius:14px; padding:10px 16px; box-shadow:0 3px 0 rgba(14,52,70,.12); min-width:86px}
+  .stat .v{font-family:'Unbounded',sans-serif; font-weight:700; font-size:20px; font-variant-numeric:tabular-nums}
+  .stat .l{font-size:12px; font-weight:800; color:var(--ink-soft)}
+
+  /* registration */
+  .name-row{display:flex; gap:10px; margin:6px 0 4px; flex-wrap:wrap; justify-content:center}
+  .name-input{
+    flex:1 1 200px; min-width:0; border:3px solid #CFE6EE; border-radius:999px;
+    padding:12px 18px; font-family:'Nunito',sans-serif; font-weight:800; font-size:16px; color:var(--ink);
+    background:#fff; outline:none;
+  }
+  .name-input:focus{border-color:var(--sea1)}
+  .hint{font-size:13px; color:var(--ink-soft); font-weight:700; min-height:18px; margin-top:8px}
+  .hint.err{color:var(--coral-dark)}
+  .preview-strip{
+    display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:4px 0 14px;
+  }
+  .preview-strip span{background:#fff; border-radius:999px; padding:6px 12px; font-size:12.5px; font-weight:800; box-shadow:0 3px 0 rgba(14,52,70,.12)}
+
+  /* teacher panel */
+  .card.wide{max-width:820px; text-align:left}
+  .teacher-head{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px}
+  .teacher-head h1{margin:0; font-size:clamp(19px,3vw,24px)}
+  .teacher-head .spacer{flex:1}
+  .top-mistakes{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .tm{
+    background:#fff; border-radius:16px; padding:12px 14px; box-shadow:0 3px 0 rgba(14,52,70,.12);
+    border-left:6px solid var(--coral);
+  }
+  .tm .w{font-family:'Unbounded',sans-serif; font-weight:700; font-size:17px; text-transform:uppercase; color:var(--coral-dark)}
+  .tm .q{font-size:14px; font-weight:800; color:var(--ink); margin-top:6px; line-height:1.4}
+  .tm .ans{display:flex; gap:14px; flex-wrap:wrap; margin-top:7px; font-size:13.5px; font-weight:800}
+  .tm .ans .a-ok{color:var(--good-dark)}
+  .tm .ans .a-bad{color:var(--coral-dark)}
+  .tm .ans b{font-weight:900}
+  .tm .c{font-size:12.5px; font-weight:700; color:var(--ink-soft); margin-top:6px; line-height:1.45}
+  .tm .c b{color:var(--ink)}
+  .tm.empty{border-left-color:#CFE6EE; color:var(--ink-soft); font-weight:700; font-size:14px; grid-column:1/-1}
+  .table-wrap{overflow-x:auto; background:#fff; border-radius:16px; box-shadow:0 3px 0 rgba(14,52,70,.12); max-height:40vh; overflow-y:auto}
+  table{width:100%; border-collapse:collapse; font-size:14px; font-weight:700; min-width:520px}
+  th,td{padding:9px 12px; text-align:left; border-bottom:1px solid #E4F0F4; white-space:nowrap}
+  th{font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); position:sticky; top:0; background:#fff}
+  td.num{text-align:right; font-variant-numeric:tabular-nums}
+  th.num{text-align:right}
+  .pill{display:inline-block; padding:3px 9px; border-radius:999px; font-size:12px; font-weight:900; color:#fff}
+  .pill.won{background:var(--good)} .pill.eaten{background:var(--coral)} .pill.playing{background:var(--sea2)}
+  .miss-badge{display:inline-block; min-width:26px; text-align:center; padding:2px 8px; border-radius:999px; background:#FDE6E1; color:var(--coral-dark); font-weight:900}
+  .miss-badge.zero{background:#E1F5EC; color:var(--good-dark)}
+  .teacher-actions{display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; margin-top:16px}
+  .empty-row td{text-align:center; color:var(--ink-soft); padding:18px}
+
+  @media (max-width:560px){
+    .logo{display:none}
+    .hud{padding:10px 10px; gap:7px}
+    .chip{padding:6px 10px; font-size:12px}
+    .chip .dot{width:7px; height:7px}
+    #muteBtn,.icon-btn{height:32px; min-width:32px; font-size:14px}
+    .beach{min-width:118px}
+    .beach .flag{display:none}
+    .beach .palm{width:clamp(60px,17vw,84px)}
+    .boat{width:34px}
+    .sun{width:60px; height:60px; right:20%}
+    .panel{padding:13px 13px 12px; margin-top:-22px}
+    .opts{gap:7px}
+    .opt{padding:10px 8px; border-radius:12px}
+    .feedback{font-size:12.5px; min-height:36px}
+    .word-count{font-size:11px}
+    .top-mistakes{grid-template-columns:1fr}
+    .card{padding:22px 18px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01s !important; animation-iteration-count:1 !important; transition-duration:.15s !important}
+  }
+</style>
+</head>
+<body>
+<div class="game" id="game">
+  <div class="hud">
+    <div class="logo">🌊 Shirley & the Shark</div>
+    <div class="chip player" id="playerChip" hidden>👤 <span id="playerName"></span></div>
+    <div class="chip good" title="Words left before the beach">🏖️ To the beach: <span class="num" id="leftNum">10</span></div>
+    <div class="chip" title="Distance between the shark and Shirley">🦈 Shark gap: <span class="dots" id="gapDots"></span></div>
+    <div class="hud-right">
+      <button class="icon-btn teacher" id="teacherBtn" hidden>📋 Teacher panel</button>
+      <button class="icon-btn" id="muteBtn" aria-label="Sound">🔊</button>
+    </div>
+  </div>
+
+  <div class="scene" id="scene">
+    <div class="sun"></div>
+    <div class="cloud c1"></div>
+    <div class="cloud c2"></div>
+    <div class="cloud c3"></div>
+    <div class="boat" aria-hidden="true">
+      <svg viewBox="0 0 60 48">
+        <path d="M5 34 L55 34 L45 46 L15 46 Z" fill="#C0503C"/>
+        <path d="M5 34 L55 34 L52 38 L8 38 Z" fill="#A03E2C"/>
+        <path d="M28 2 L28 31 L8 31 Z" fill="#FF8A5C"/>
+        <path d="M28 12 L28 18 L15 24 L19 18 Z" fill="#FFB48D"/>
+        <path d="M33 8 L33 31 L52 31 Z" fill="#FFE3B3"/>
+        <rect x="29" y="1" width="3" height="32" rx="1.5" fill="#6E4526"/>
+        <path d="M29 1 L40 4 L29 8 Z" fill="#E04E33"/>
+      </svg>
+    </div>
+    <div class="sea">
+      <div class="caustics"></div>
+      <div class="fish-school" aria-hidden="true">
+        <svg viewBox="0 0 120 60">
+          <g fill="#FF9A66" opacity=".9">
+            <path d="M28 14 C 36 8 46 8 52 14 C 46 20 36 20 28 14 Z M28 14 L20 8 L22 14 L20 20 Z"/>
+            <path d="M58 34 C 66 28 76 28 82 34 C 76 40 66 40 58 34 Z M58 34 L50 28 L52 34 L50 40 Z" opacity=".85"/>
+            <path d="M24 46 C 31 41 40 41 45 46 C 40 51 31 51 24 46 Z M24 46 L17 41 L19 46 L17 51 Z" opacity=".7"/>
+          </g>
+        </svg>
+      </div>
+      <div class="wave w-back"></div>
+      <div class="wave w-front"></div>
+      <div class="sea-shimmer"></div>
+      <i class="twinkle t1"></i><i class="twinkle t2"></i><i class="twinkle t3"></i><i class="twinkle t4"></i>
+    </div>
+    <div class="beach" aria-hidden="true">
+      <svg class="sand" viewBox="0 0 420 320" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="sandg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#F8E5AE"/><stop offset="1" stop-color="#E2BB74"/>
+          </linearGradient>
+        </defs>
+        <path d="M420 44 C 322 54 214 92 142 156 C 88 204 60 260 52 320 L420 320 Z" fill="#D8AC66" opacity=".6" transform="translate(-14,8)"/>
+        <path d="M420 44 C 322 54 214 92 142 156 C 88 204 60 260 52 320 L420 320 Z" fill="url(#sandg)"/>
+        <path d="M420 44 C 322 54 214 92 142 156 C 88 204 60 260 52 320" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" opacity=".55" class="foam-line" stroke-dasharray="34 26"/>
+        <g fill="#FFFFFF" opacity=".65">
+          <ellipse class="foam-e" cx="150" cy="150" rx="20" ry="5" transform="rotate(-42 150 150)"/>
+          <ellipse class="foam-e" cx="92" cy="238" rx="16" ry="4" transform="rotate(-60 92 238)"/>
+          <ellipse class="foam-e" cx="240" cy="83" rx="22" ry="5" transform="rotate(-22 240 83)"/>
+          <ellipse class="foam-e" cx="348" cy="50" rx="20" ry="4" transform="rotate(-8 348 50)"/>
+        </g>
+        <g transform="translate(268,252) rotate(-14)">
+          <path d="M0 -17 L5 -5 L17 -4 L8 4 L11 16 L0 9 L-11 16 L-8 4 L-17 -4 L-5 -5 Z" fill="#F0875C"/>
+          <circle cx="0" cy="0" r="3" fill="#E06A3C"/>
+        </g>
+        <circle cx="330" cy="220" r="4" fill="#D9AF69"/>
+        <circle cx="356" cy="268" r="5" fill="#CFA25C"/>
+        <circle cx="300" cy="292" r="4" fill="#D9AF69"/>
+      </svg>
+      <div class="palm">
+        <svg viewBox="0 0 220 260">
+          <path d="M104 252 C 96 200 100 148 124 96" stroke="#8A5A33" stroke-width="15" fill="none" stroke-linecap="round"/>
+          <path d="M96 216 q11 7 20 2 M95 182 q11 7 20 2 M99 148 q11 7 19 2 M108 120 q10 6 17 1" stroke="#6E4526" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+          <g class="palm-crown">
+            <g transform="translate(124,96)">
+              <path d="M0 2 C -38 -22 -80 -24 -106 -2 C -74 -8 -38 2 -2 12 C -30 16 -58 28 -70 46 C -44 32 -18 20 2 14 Z" fill="#2E9C58"/>
+              <path d="M0 0 C -24 -36 -60 -52 -94 -46 C -62 -34 -30 -16 -2 6 Z" fill="#46BB6E"/>
+              <path d="M0 -2 C -8 -44 8 -76 40 -88 C 26 -62 20 -32 6 -2 Z" fill="#2E9C58"/>
+              <path d="M0 0 C 12 -40 44 -62 82 -60 C 52 -42 24 -18 4 6 Z" fill="#46BB6E"/>
+              <path d="M0 2 C 38 -20 80 -20 104 2 C 72 -4 38 4 2 12 C 32 18 58 32 68 50 C 42 34 16 22 -2 14 Z" fill="#2E9C58"/>
+              <path d="M0 4 C 28 2 54 16 66 40 C 42 26 18 18 0 14 Z" fill="#57C476"/>
+              <path d="M0 4 C -26 4 -50 18 -60 42 C -38 26 -16 18 0 14 Z" fill="#57C476"/>
+              <circle cx="-8" cy="12" r="9" fill="#6B4A26"/>
+              <circle cx="9" cy="15" r="9" fill="#7C5730"/>
+              <circle cx="0" cy="24" r="9" fill="#5E3F1F"/>
+            </g>
+          </g>
+        </svg>
+      </div>
+      <div class="flag">FINISH 🏁</div>
+    </div>
+
+    <!-- Shark -->
+    <div class="actor" id="shark">
+      <div class="swim">
+        <div class="shark-rig" aria-hidden="true">
+          <div class="shark-img" id="sharkArt"></div>
+          <div class="shark-glint"></div>
+          <div class="shark-bubbles"><i></i><i></i><i></i></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Shirley -->
+    <div class="actor" id="shirley">
+      <div class="bob">
+        <svg viewBox="0 0 100 110" aria-hidden="true">
+          <ellipse cx="50" cy="96" rx="44" ry="10" fill="#FF8A5C"/>
+          <ellipse cx="50" cy="94" rx="44" ry="9" fill="#FFA97E"/>
+          <line x1="16" y1="94" x2="84" y2="94" stroke="#E06A3C" stroke-width="2"/>
+          <path d="M40 78 Q 38 88 42 92 M60 78 Q 62 88 58 92" stroke="#E8A87C" stroke-width="7" fill="none" stroke-linecap="round"/>
+          <path d="M38 52 Q 50 44 62 52 L 64 80 Q 50 86 36 80 Z" fill="#2BB3A3"/>
+          <path d="M40 56 Q 26 62 24 74 M60 56 Q 76 60 80 52" stroke="#E8A87C" stroke-width="6.5" fill="none" stroke-linecap="round"/>
+          <circle cx="50" cy="34" r="17" fill="#F2BE93"/>
+          <path d="M33 32 Q 32 12 52 14 Q 70 15 67 34 Q 66 22 56 21 Q 40 20 38 34 Z" fill="#7A4A21"/>
+          <path d="M66 30 Q 74 36 72 48 Q 68 42 64 40 Z" fill="#7A4A21"/>
+          <circle cx="44" cy="34" r="2.2" fill="#0E3446"/>
+          <circle cx="56" cy="34" r="2.2" fill="#0E3446"/>
+          <path d="M45 41 Q 50 45 55 41" stroke="#0E3446" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+          <circle cx="40" cy="39" r="2.6" fill="#F49B7A" opacity=".7"/>
+          <circle cx="60" cy="39" r="2.6" fill="#F49B7A" opacity=".7"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="burst" id="burst">CHOMP!</div>
+    <div class="bubble" id="bubble"></div>
+  </div>
+
+  <div class="panel-wrap">
+    <div class="panel" id="panel">
+      <div class="panel-top">
+        <div class="word-tag" id="wordTag">WORD</div>
+        <div class="word-count" id="wordCount"></div>
+      </div>
+      <div class="sentence" id="sentence"></div>
+      <div class="opts" id="opts"></div>
+      <div class="feedback" id="feedback" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <!-- Registration / start -->
+  <div class="overlay" id="startOv">
+    <div class="card">
+      <div class="emo">🏄‍♀️🦈</div>
+      <h1>Shirley & the Shark</h1>
+      <p>Surfer Shirley is stuck far from the beach, and a very <b>hungry (but polite)</b> shark is circling behind her. Before every move it asks a question about sharks — facts and English grammar.</p>
+      <div class="preview-strip">
+        <span>🦈 10 shark questions</span><span>🌊 paddle to the beach</span><span>😋 don't get eaten</span>
+      </div>
+      <div class="rules">
+        <div class="rule"><span class="ico">✅</span><span>Correct answer — Shirley paddles one step closer to the beach.</span></div>
+        <div class="rule"><span class="ico">❌</span><span>Mistake — the shark swims closer. The question will come back later so you can learn it!</span></div>
+        <div class="rule"><span class="ico">🐌</span><span>Don't think too long — while you wait, the shark slowly drifts closer!</span></div>
+        <div class="rule"><span class="ico">🏖️</span><span>Answer all 10 questions and Shirley is safe on the sand. Your result goes to the teacher.</span></div>
+      </div>
+      <form class="name-row" id="nameForm" autocomplete="off">
+        <input class="name-input" id="nameInput" name="name" maxlength="30" placeholder="Your name" required aria-label="Your name">
+        <button class="big-btn" id="startBtn" type="submit" style="margin-top:0">Save & start 🌊</button>
+      </form>
+      <div class="hint" id="nameHint"></div>
+    </div>
+  </div>
+
+  <!-- End of game -->
+  <div class="overlay" id="endOv" hidden>
+    <div class="card">
+      <div class="emo" id="endEmo"></div>
+      <h1 id="endTitle"></h1>
+      <p id="endText"></p>
+      <div class="stats">
+        <div class="stat"><div class="v" id="statWords">0</div><div class="l">questions solved</div></div>
+        <div class="stat"><div class="v" id="statMiss">0</div><div class="l">mistakes</div></div>
+        <div class="stat"><div class="v" id="statTime">0:00</div><div class="l">time</div></div>
+      </div>
+      <p class="hint" id="saveHint"></p>
+      <button class="big-btn" id="retryBtn">One more ride! 🏄‍♀️</button>
+    </div>
+  </div>
+
+  <!-- Teacher panel -->
+  <div class="overlay" id="teacherOv" hidden>
+    <div class="card wide">
+      <div class="teacher-head">
+        <h1>📋 Teacher panel</h1>
+        <span class="hint" id="teacherUpdated"></span>
+        <span class="spacer"></span>
+        <button class="ghost-btn" id="teacherClose">✕ Close</button>
+      </div>
+      <div class="stats" style="justify-content:flex-start">
+        <div class="stat"><div class="v" id="tPlayers">0</div><div class="l">players</div></div>
+        <div class="stat"><div class="v" id="tGames">0</div><div class="l">games</div></div>
+        <div class="stat"><div class="v" id="tMistakes">0</div><div class="l">total mistakes</div></div>
+        <div class="stat"><div class="v" id="tWon">0</div><div class="l">reached beach</div></div>
+        <div class="stat"><div class="v" id="tEaten">0</div><div class="l">eaten</div></div>
+      </div>
+      <h2>🔥 Two most common mistakes</h2>
+      <div class="top-mistakes" id="topMistakes"></div>
+      <h2>👥 All players</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Player</th><th>Result</th><th class="num">Questions</th><th class="num">Mistakes</th><th class="num">Time</th><th>Started</th></tr></thead>
+          <tbody id="resultsBody"></tbody>
+        </table>
+      </div>
+      <div class="teacher-actions">
+        <button class="ghost-btn" id="teacherRefresh">🔄 Refresh</button>
+        <button class="ghost-btn danger" id="teacherReset">🗑 Reset all results</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var WORDS = [
+    {w:'SHARK FACTS', q:'Sharks are\u2026', opts:['fish','mammals','reptiles'], a:0,
+     fact:'Sharks are fish \u2014 but their skeleton is made of cartilage, not bone!'},
+    {w:'HABITAT', q:'Where do sharks live?', opts:['In the ocean','In the desert','In the mountains'], a:0,
+     fact:'Sharks live in oceans all over the world \u2014 from warm reefs to icy waters.'},
+    {w:'BREATHING', q:'What do sharks use to breathe?', opts:['Lungs','Gills','Their skin'], a:1,
+     fact:'Sharks breathe with gills \u2014 they take oxygen straight from the water.'},
+    {w:'TEETH', q:'Sharks have several rows of\u2026', opts:['teeth','ears','tails'], a:0,
+     fact:'A shark can grow and lose about 30,000 teeth in its lifetime!'},
+    {w:'THE BIGGEST', q:'Which shark is the biggest?', opts:['The whale shark','The great white shark','The tiger shark'], a:0,
+     fact:'The whale shark grows up to 18 metres \u2014 but it eats only tiny plankton.'},
+    {w:'TRUE OR FALSE', q:'True or False: \u201CAll sharks are dangerous to humans.\u201D', opts:['True','False'], a:1,
+     fact:'False! There are 500+ shark species, and most are not dangerous to humans.'},
+    {w:'YESTERDAY\u2026', q:'Yesterday, a fisherman ___ a shark near his boat.', opts:['sees','saw','was see'], a:1,
+     fact:'Yesterday \u2192 Past Simple: see \u2014 saw \u2014 seen.'},
+    {w:'CHOOSE RIGHT', q:'Choose the correct sentence:', opts:['The shark swam past the boat.','The shark swimmed past the boat.','The shark was swim past the boat.'], a:0,
+     fact:'Swim is irregular: swim \u2014 swam \u2014 swum. \u201CSwimmed\u201D does not exist!'},
+    {w:'IN THE SEA', q:'The children ___ in the sea when they saw a shark.', opts:['swam','were swimming','had swum'], a:1,
+     fact:'A long action in progress \u2192 Past Continuous: were swimming.'},
+    {w:'EVERYONE\u2026', q:'The shark appeared, so everyone ___ out of the water.', opts:['got','get','was getting'], a:0,
+     fact:'A quick reaction \u2192 Past Simple: get \u2014 got \u2014 got.'}
+  ];
+
+  var TOTAL = WORDS.length;      // 20
+  var START_GAP = 6;             // steps between the shark and Shirley
+  var IDLE_GRACE = 8;            // seconds of calm thinking
+  var IDLE_STEP_SEC = 15;        // idle seconds it takes the shark to gain one step
+
+  var progress, gap, mistakes, queue, current, locked, over;
+  var idleTimer = null, questionAt = 0, idleWarned = false;
+  var player = { name: '', role: 'student', sessionId: null, startedAt: 0 };
+  var teacherTimer = null;
+
+  var $ = function(id){ return document.getElementById(id); };
+  var shirley = $('shirley'), shark = $('shark'), scene = $('scene');
+
+  /* ---------- API ---------- */
+  // The backend is either the Node server (api/...), Apache+PHP with rewrite
+  // (api/...) or plain PHP without mod_rewrite (api.php/api/...).
+  // Detect which base works once, then stick to it.
+  var apiBase = null;
+  function detectBase(){
+    var candidates = ['', 'api.php/'];
+    var i = 0;
+    function tryNext(){
+      if(i >= candidates.length){ return Promise.resolve(''); }
+      var b = candidates[i++];
+      return fetch(b + 'api/ping', { cache: 'no-store' }).then(function(r){
+        if(!r.ok) return tryNext();
+        return r.json().then(function(j){ return j && j.ok ? b : tryNext(); }).catch(tryNext);
+      }).catch(tryNext);
+    }
+    return tryNext().then(function(b){ apiBase = b; return b; });
+  }
+  var basePromise = detectBase();
+  function api(path, method, body){
+    var ready = (apiBase === null) ? basePromise : Promise.resolve(apiBase);
+    return ready.then(function(base){
+      return fetch(base + path, {
+        method: method || 'GET',
+        headers: { 'Content-Type': 'application/json', 'X-Player-Name': player.name || '' },
+        body: body ? JSON.stringify(body) : undefined
+      });
+    }).then(function(r){
+      return r.json().catch(function(){ return {}; }).then(function(data){
+        if(!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+        return data;
+      });
+    });
+  }
+  function reportMistake(w, chosen){
+    if(!player.sessionId) return;
+    api('api/sessions/' + player.sessionId + '/mistake', 'POST', { word: w.w, chosen: chosen, correct: w.opts[w.a] }).catch(function(){});
+  }
+  function reportFinish(status){
+    if(!player.sessionId) return Promise.resolve({ skipped: true });
+    return api('api/sessions/' + player.sessionId + '/finish', 'POST', {
+      status: status, wordsDone: progress, durationSec: (Date.now() - player.startedAt) / 1000
+    });
+  }
+
+  /* ---------- sound ---------- */
+  var muted = false, actx = null;
+  function ac(){ if(!actx){ try{ actx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return actx; }
+  function tone(freq, t0, dur, type, vol){
+    var ctx = ac(); if(!ctx || muted) return;
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type||'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol||0.12, ctx.currentTime+t0);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+t0+dur);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(ctx.currentTime+t0); o.stop(ctx.currentTime+t0+dur+0.05);
+  }
+  function sGood(){ tone(523,0,.12); tone(659,.1,.12); tone(784,.2,.2); }
+  function sBad(){ tone(196,0,.25,'square',.08); tone(147,.18,.3,'square',.08); }
+  function sGulp(){ tone(400,0,.15,'sawtooth',.1); tone(250,.12,.2,'sawtooth',.1); tone(120,.3,.4,'sawtooth',.12); }
+  function sWin(){ [523,659,784,1047].forEach(function(f,i){ tone(f,i*.13,.25); }); }
+  $('muteBtn').addEventListener('click', function(){
+    muted = !muted; this.textContent = muted ? '🔇' : '🔊';
+  });
+
+  /* ---------- positions ---------- */
+  function shirleyLeft(){ return 20 + progress * (58 / TOTAL); }      // 20% → 78%
+  // позиция акулы = кончик её носа (translateX(-100%)), а не центр тела
+  function sharkLeft(){ return Math.max(7, shirleyLeft() - 2 - gap * 3.1); }
+  function place(){
+    shirley.style.left = shirleyLeft() + '%';
+    shark.style.left = sharkLeft() + '%';
+  }
+
+  /* ---------- HUD ---------- */
+  function hud(){
+    $('leftNum').textContent = TOTAL - progress;
+    var d = $('gapDots'); d.innerHTML = '';
+    for(var i=0;i<START_GAP;i++){
+      var s = document.createElement('span');
+      s.className = 'dot' + (i < Math.ceil(gap - 0.01) ? ' on' : '');
+      d.appendChild(s);
+    }
+  }
+  function fmtTime(sec){
+    sec = Math.max(0, Math.round(sec));
+    return Math.floor(sec/60) + ':' + String(sec%60).padStart(2,'0');
+  }
+
+  /* ---------- idle: the shark creeps closer ---------- */
+  function startIdle(){
+    stopIdle();
+    questionAt = Date.now();
+    idleWarned = false;
+    idleTimer = setInterval(function(){
+      if(over || locked) return;
+      var idle = (Date.now() - questionAt) / 1000;
+      if(idle < IDLE_GRACE) return;
+      gap = Math.max(0, gap - 0.5 / IDLE_STEP_SEC); // tick every 500 ms
+      place(); hud();
+      if(!idleWarned){
+        idleWarned = true;
+        var fb = $('feedback');
+        fb.className = 'feedback bad';
+        fb.innerHTML = '<b>Hurry up!</b> While you think, the shark keeps swimming closer…';
+        tone(160,0,.2,'square',.06);
+      }
+      if(gap <= 0){
+        locked = true;
+        stopIdle();
+        eatShirley();
+      }
+    }, 500);
+  }
+  function stopIdle(){
+    if(idleTimer){ clearInterval(idleTimer); idleTimer = null; }
+  }
+
+  /* ---------- questions ---------- */
+  function shuffle(a){
+    for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; }
+    return a;
+  }
+  function nextQuestion(){
+    if(over) return;
+    current = queue.shift();
+    var w = WORDS[current];
+    $('wordTag').textContent = w.w;
+    $('wordCount').textContent = 'question ' + (progress + 1) + ' of ' + TOTAL;
+    $('sentence').innerHTML = w.q.replace('___','<span class="gap">___</span>');
+    var fb = $('feedback'); fb.textContent = 'The shark is waiting for your answer…'; fb.className = 'feedback';
+    var box = $('opts'); box.innerHTML = '';
+    var long = w.opts.some(function(o){ return o.length > 22; });
+    box.style.gridTemplateColumns = long ? '1fr' : '1fr 1fr';
+    box.classList.toggle('three', !long && w.opts.length === 3);
+    w.opts.forEach(function(opt, idx){
+      var b = document.createElement('button');
+      b.className = 'opt'; b.type = 'button'; b.textContent = opt;
+      b.addEventListener('click', function(){ answer(idx, b); });
+      box.appendChild(b);
+    });
+    locked = false;
+    startIdle();
+  }
+
+  function answer(idx, btn){
+    if(locked || over) return;
+    locked = true;
+    stopIdle();
+    var w = WORDS[current];
+    var buttons = $('opts').children;
+    for(var i=0;i<buttons.length;i++){ buttons[i].disabled = true; }
+    var fb = $('feedback');
+
+    if(idx === w.a){
+      btn.classList.add('correct');
+      progress++;
+      sGood();
+      shirley.classList.add('paddle');
+      setTimeout(function(){ shirley.classList.remove('paddle'); }, 1100);
+      spawnSplash(shirleyLeft(), 57, 8, 30);
+      place();
+      fb.className = 'feedback ok';
+      fb.innerHTML = '<b>Correct!</b> ' + w.fact + ' 🌊 Shirley paddles closer to the beach!';
+      hud();
+      if(progress >= TOTAL){ setTimeout(win, 1200); }
+      else { setTimeout(nextQuestion, 1500); }
+    } else {
+      btn.classList.add('wrong');
+      buttons[w.a].classList.add('correct');
+      mistakes++;
+      gap = Math.max(0, gap - 1);
+      sBad();
+      reportMistake(w, w.opts[idx]);
+      // the word comes back later
+      var back = Math.min(queue.length, 2 + Math.floor(Math.random()*3));
+      queue.splice(back, 0, current);
+      sharkAdvance();
+      hud();
+      fb.className = 'feedback bad';
+      fb.innerHTML = '<b>Oops!</b> The answer is <b>' + w.opts[w.a] + '</b>. ' + w.fact + ' The question will come back!';
+      if(gap <= 0){ setTimeout(eatShirley, 900); }
+      else { setTimeout(nextQuestion, 2600); }
+    }
+  }
+
+  /* ---------- брызги ---------- */
+  function spawnSplash(leftPct, topPct, drops, power){
+    var el = document.createElement('div');
+    el.className = 'splash';
+    el.style.left = leftPct + '%';
+    el.style.top = topPct + '%';
+    for(var i = 0; i < drops; i++){
+      var d = document.createElement('i');
+      var ang = Math.PI * (0.12 + 0.76 * Math.random());   // веер вверх
+      var dist = power * (0.45 + Math.random());
+      d.style.setProperty('--dx', Math.round(Math.cos(ang) * dist * (Math.random() < .5 ? -1 : 1)) + 'px');
+      d.style.setProperty('--dy', Math.round(-Math.sin(ang) * dist * 1.5) + 'px');
+      d.style.setProperty('--t', (0.45 + Math.random() * 0.4).toFixed(2) + 's');
+      var sz = 4 + Math.random() * 6;
+      d.style.width = sz + 'px'; d.style.height = sz + 'px';
+      el.appendChild(d);
+    }
+    scene.appendChild(el);
+    setTimeout(function(){ el.remove(); }, 1200);
+  }
+  // лёгкие брызги, пока акула плавает
+  setInterval(function(){
+    if(over || !$('startOv').hidden || !$('teacherOv').hidden) return;
+    spawnSplash(sharkLeft() - 3 - Math.random() * 5, 55 + Math.random() * 6, 4, 22);
+  }, 3800);
+
+  function sharkAdvance(){
+    shark.classList.add('lunge','mouth-open');
+    place();
+    scene.classList.add('shake');
+    spawnSplash(sharkLeft() - 2, 54, 12, 46);
+    setTimeout(function(){ shark.classList.remove('mouth-open'); }, 500);
+    setTimeout(function(){ shark.classList.remove('lunge'); scene.classList.remove('shake'); }, 800);
+  }
+
+  /* ---------- the funny lunch ---------- */
+  function eatShirley(){
+    over = true;
+    stopIdle();
+    shark.classList.add('lunge');
+    shark.style.left = shirleyLeft() + '%';
+    shark.classList.add('mouth-open');
+    sGulp();
+    var saving = reportFinish('eaten');
+
+    setTimeout(function(){
+      shirley.classList.add('gone');
+      shark.classList.remove('mouth-open');
+      shark.classList.add('fed');
+      spawnSplash(shirleyLeft(), 52, 24, 95);
+      setTimeout(function(){ spawnSplash(shirleyLeft() + 3, 56, 10, 45); }, 250);
+      var b = $('burst');
+      b.style.left = shirleyLeft() + '%';
+      b.style.top = '30%';
+      b.textContent = 'CHOMP!';
+      b.classList.add('show');
+      scene.classList.add('shake');
+    }, 600);
+
+    setTimeout(function(){
+      scene.classList.remove('shake');
+      var bub = $('bubble');
+      bub.style.left = (shirleyLeft() + 8) + '%';
+      bub.style.top = '22%';
+      bub.textContent = 'Burp! 🫧 Yuck, surfers taste awful!';
+      bub.classList.add('show');
+      tone(90,0,.3,'square',.1);
+    }, 1500);
+
+    setTimeout(function(){ showEnd(false, saving); }, 3400);
+  }
+
+  /* ---------- victory ---------- */
+  function win(){
+    over = true;
+    stopIdle();
+    sWin();
+    var saving = reportFinish('won');
+    shirley.style.left = '86%';
+    shirley.style.bottom = '46%';
+    setTimeout(function(){ shirley.classList.add('dance'); }, 900);
+    var colors = ['#FF6A4D','#FFD873','#2BB3A3','#2BA8BF','#F2BE93'];
+    for(var i=0;i<36;i++){
+      var c = document.createElement('div');
+      c.className = 'confetti';
+      c.style.left = (5 + Math.random()*90) + '%';
+      c.style.background = colors[i % colors.length];
+      c.style.animationDuration = (1.6 + Math.random()*1.8) + 's';
+      c.style.animationDelay = (Math.random()*0.9) + 's';
+      c.style.borderRadius = Math.random() > .5 ? '50%' : '2px';
+      $('game').appendChild(c);
+    }
+    setTimeout(function(){ showEnd(true, saving); }, 2300);
+  }
+
+  function showEnd(won, saving){
+    $('endEmo').textContent = won ? '🏖️🎉' : '🦈😋';
+    $('endTitle').textContent = won ? 'Shirley made it to the beach!' : 'Chomp! The shark had lunch…';
+    $('endText').innerHTML = won
+      ? 'All <b>10 questions</b> answered! The shark stayed hungry and swam away to sulk. Shirley is already sunbathing.'
+      : 'Don\'t worry: it\'s cozy in there, there\'s even Wi-Fi. The shark promises to spit her out before the next round. Try again — same questions, brand-new chance!';
+    $('statWords').textContent = progress;
+    $('statMiss').textContent = mistakes;
+    $('statTime').textContent = fmtTime((Date.now() - player.startedAt) / 1000);
+    var hint = $('saveHint');
+    hint.className = 'hint';
+    if(player.role === 'teacher'){
+      hint.textContent = 'Teacher practice games are not saved.';
+    } else {
+      hint.textContent = 'Saving your result…';
+      saving.then(function(){ hint.textContent = 'Result saved for ' + player.name + ' ✓'; })
+            .catch(function(){ hint.className = 'hint err'; hint.textContent = 'Could not save the result — the server is unreachable.'; });
+    }
+    $('endOv').hidden = false;
+  }
+
+  /* ---------- start / restart ---------- */
+  function reset(){
+    stopIdle();
+    progress = 0; gap = START_GAP; mistakes = 0; over = false; locked = false;
+    queue = shuffle(Array.apply(null, {length: TOTAL}).map(function(_, i){ return i; }));
+    shirley.className = 'actor'; shirley.style.left = ''; shirley.style.bottom = '';
+    shark.className = 'actor'; shark.style.left = '';
+    $('burst').classList.remove('show');
+    $('bubble').classList.remove('show');
+    var conf = document.querySelectorAll('.confetti');
+    for(var i=0;i<conf.length;i++){ conf[i].remove(); }
+    player.startedAt = Date.now();
+    place();
+    hud();
+    nextQuestion();
+  }
+
+  function register(name){
+    var btn = $('startBtn'), hint = $('nameHint');
+    btn.disabled = true; hint.className = 'hint'; hint.textContent = 'Saving…';
+    return api('api/sessions', 'POST', { name: name }).then(function(data){
+      player.name = data.name; player.role = data.role; player.sessionId = data.sessionId;
+      try{ localStorage.setItem('shirley.name', data.name); }catch(e){}
+      $('playerName').textContent = data.name + (data.role === 'teacher' ? ' (teacher)' : '');
+      $('playerChip').hidden = false;
+      $('teacherBtn').hidden = data.role !== 'teacher';
+      btn.disabled = false; hint.textContent = '';
+      return data;
+    }).catch(function(err){
+      btn.disabled = false;
+      hint.className = 'hint err';
+      hint.textContent = err.message === 'Failed to fetch' ? 'Server is unreachable — start it with "node server.js".' : err.message;
+      throw err;
+    });
+  }
+
+  $('nameForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    var name = $('nameInput').value.replace(/\s+/g,' ').trim();
+    if(!name){ $('nameHint').className = 'hint err'; $('nameHint').textContent = 'Please type your name first.'; return; }
+    ac(); // wake audio on a user gesture
+    register(name).then(function(){
+      $('startOv').hidden = true;
+      reset();
+    }).catch(function(){});
+  });
+
+  $('retryBtn').addEventListener('click', function(){
+    var btn = this; btn.disabled = true;
+    // a new game = a new session for the same player
+    register(player.name).then(function(){
+      $('endOv').hidden = true;
+      reset();
+    }).catch(function(){
+      // play offline anyway
+      $('endOv').hidden = true;
+      reset();
+    }).then(function(){ btn.disabled = false; });
+  });
+
+  /* ---------- teacher panel ---------- */
+  function esc(s){ return String(s == null ? '' : s); }
+  function renderTeacher(data){
+    var t = data.totals || {};
+    $('tPlayers').textContent = t.players || 0;
+    $('tGames').textContent = t.games || 0;
+    $('tMistakes').textContent = t.mistakes || 0;
+    $('tWon').textContent = t.won || 0;
+    $('tEaten').textContent = t.eaten || 0;
+
+    var top = $('topMistakes'); top.innerHTML = '';
+    if(!data.topMistakes || !data.topMistakes.length){
+      var e = document.createElement('div'); e.className = 'tm empty';
+      e.textContent = 'No mistakes yet — either the class is brilliant or nobody has played.';
+      top.appendChild(e);
+    } else {
+      // полный текст вопроса берём из банка вопросов по его тегу
+      var qmap = {};
+      WORDS.forEach(function(w){ qmap[w.w] = w.q; });
+      data.topMistakes.forEach(function(m, i){
+        var d = document.createElement('div'); d.className = 'tm';
+        var w = document.createElement('div'); w.className = 'w'; w.textContent = '#' + (i+1) + ' ' + esc(m.word);
+        var qEl = document.createElement('div'); qEl.className = 'q';
+        qEl.textContent = qmap[m.word] ? qmap[m.word].replace('___', '_____') : '(question changed since this mistake was recorded)';
+        var c = document.createElement('div'); c.className = 'c';
+        c.innerHTML = '<b>' + m.count + '</b> wrong answer' + (m.count === 1 ? '' : 's') + ' from <b>' + m.players + '</b> game' + (m.players === 1 ? '' : 's');
+        var ans = document.createElement('div'); ans.className = 'ans';
+        ans.innerHTML = '<span class="a-ok">✓ <b></b></span><span class="a-bad">✗ <b></b></span>';
+        ans.querySelector('.a-ok b').textContent = esc(m.correct);
+        ans.querySelector('.a-bad b').textContent = esc(m.typicalWrong || '—');
+        d.appendChild(w); d.appendChild(qEl); d.appendChild(ans); d.appendChild(c); top.appendChild(d);
+      });
+    }
+
+    var body = $('resultsBody'); body.innerHTML = '';
+    if(!data.sessions || !data.sessions.length){
+      var tr = document.createElement('tr'); tr.className = 'empty-row';
+      tr.innerHTML = '<td colspan="6">No finished games yet. Results appear when a player wins or gets eaten.</td>';
+      body.appendChild(tr);
+    } else {
+      data.sessions.forEach(function(s){
+        var tr = document.createElement('tr');
+        var label = s.status === 'won' ? 'reached beach' : 'eaten';
+        tr.innerHTML =
+          '<td></td>' +
+          '<td><span class="pill ' + s.status + '">' + label + '</span></td>' +
+          '<td class="num">' + s.words_done + '/10</td>' +
+          '<td class="num"><span class="miss-badge' + (s.mistakes ? '' : ' zero') + '">' + s.mistakes + '</span></td>' +
+          '<td class="num">' + (s.duration_sec != null ? fmtTime(s.duration_sec) : '—') + '</td>' +
+          '<td></td>';
+        tr.children[0].textContent = s.name;
+        tr.children[5].textContent = fmtWhen(s.started_at);
+        body.appendChild(tr);
+      });
+    }
+    $('teacherUpdated').textContent = 'updated ' + new Date().toLocaleTimeString();
+  }
+  function fmtWhen(sqlUtc){
+    if(!sqlUtc) return '—';
+    var d = new Date(sqlUtc.replace(' ', 'T') + 'Z');
+    return isNaN(d) ? sqlUtc : d.toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+  }
+  function loadTeacher(){
+    return api('api/teacher/results?name=' + encodeURIComponent(player.name)).then(renderTeacher).catch(function(err){
+      $('teacherUpdated').textContent = 'Error: ' + err.message;
+    });
+  }
+  function openTeacher(){
+    stopIdle(); // pause the shark while the teacher reads the results
+    $('teacherOv').hidden = false;
+    loadTeacher();
+    teacherTimer = setInterval(loadTeacher, 5000);
+  }
+  function closeTeacher(){
+    $('teacherOv').hidden = true;
+    if(teacherTimer){ clearInterval(teacherTimer); teacherTimer = null; }
+    if(!over && !locked) startIdle();
+  }
+  $('teacherBtn').addEventListener('click', openTeacher);
+  $('teacherClose').addEventListener('click', closeTeacher);
+  $('teacherRefresh').addEventListener('click', loadTeacher);
+  $('teacherReset').addEventListener('click', function(){
+    if(!confirm('Delete ALL saved results and mistakes? This cannot be undone.')) return;
+    api('api/teacher/results?name=' + encodeURIComponent(player.name), 'DELETE').then(loadTeacher).catch(function(err){
+      $('teacherUpdated').textContent = 'Error: ' + err.message;
+    });
+  });
+
+  /* ---------- boot ---------- */
+  // подгружаем SVG акулы инлайном, чтобы CSS анимировал её части (хвост, плавники, очки)
+  fetch('shark.svg').then(function(r){ if(!r.ok) throw new Error('svg'); return r.text(); }).then(function(svg){
+    $('sharkArt').innerHTML = svg;
+  }).catch(function(){
+    $('sharkArt').innerHTML = '<img src="shark.svg" alt="">';
+  });
+
+  try{ var saved = localStorage.getItem('shirley.name'); if(saved) $('nameInput').value = saved; }catch(e){}
+  place(); hud();
+  // demo mode for quick previews: ?demo=1 starts offline without registration
+  if(new URLSearchParams(location.search).get('demo')){
+    player.name = 'Demo'; player.role = 'student'; player.sessionId = null;
+    $('startOv').hidden = true; reset();
+  }
+})();
+</script>
+</body>
+</html>
