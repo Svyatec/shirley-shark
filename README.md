@@ -22,6 +22,8 @@ Requires **Node 22.13+** (built-in `node:sqlite`, no npm dependencies). The data
   - a table of all players with their mistakes,
   - **Refresh** and **Reset all results** (wipes the database).
 - Teacher practice games are not stored.
+- **Question builder** (🛠 button inside the teacher panel) lets the teacher fully customize the game: write questions with 2-4 options, mark the correct one, add an explanation shown after the answer, edit and delete entries. When the custom set has at least 2 questions, every new game uses it instead of the built-in shark quiz; "Clear custom questions" brings the default set back. Game rules are editable too: the shark gap (mistakes before being eaten, 2-8) and whether the shark drifts closer while the player thinks. Everything is stored in the same SQLite database.
+- Player names may be in any script (Cyrillic, Chinese, Thai, ...) — data travels as UTF-8 JSON.
 
 ## Shared hosting (PHP) — no Node needed
 
@@ -48,4 +50,7 @@ The frontend detects the backend automatically: it tries `api/ping` (Node or Apa
 | POST | `/api/sessions/:id/mistake` `{word, chosen, correct}` | record a mistake |
 | POST | `/api/sessions/:id/finish` `{status, wordsDone, durationSec}` | finish a game |
 | GET | `/api/teacher/results?name=Shirley` | full report |
-| DELETE | `/api/teacher/results?name=Shirley` | clear everything |
+| DELETE | `/api/teacher/results?name=Shirley` | clear results |
+| GET | `/api/questions` | active custom question set + game rules |
+| POST/PUT/DELETE | `/api/teacher/questions[/:id]?name=Shirley` | add / edit / delete custom questions (DELETE without id clears the set) |
+| POST | `/api/teacher/settings?name=Shirley` | save game rules (startGap, idleEnabled) |

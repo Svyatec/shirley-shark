@@ -44,6 +44,19 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_mistakes_session ON mistakes(session_id);
   CREATE INDEX IF NOT EXISTS idx_mistakes_word ON mistakes(word);
+  CREATE TABLE IF NOT EXISTS questions (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    tag        TEXT    NOT NULL,
+    question   TEXT    NOT NULL,
+    options    TEXT    NOT NULL,           -- JSON array of strings
+    correct    INTEGER NOT NULL,
+    fact       TEXT    NOT NULL DEFAULT '',
+    created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
 `);
 
 const q = {
@@ -76,6 +89,13 @@ const q = {
     WHERE m.word = ? GROUP BY m.chosen ORDER BY count DESC LIMIT 1`),
   clearMistakes: db.prepare(`DELETE FROM mistakes`),
   clearSessions: db.prepare(`DELETE FROM sessions`),
+  listQuestions: db.prepare(`SELECT * FROM questions ORDER BY id`),
+  insertQuestion: db.prepare(`INSERT INTO questions (tag, question, options, correct, fact) VALUES (?, ?, ?, ?, ?)`),
+  updateQuestion: db.prepare(`UPDATE questions SET tag = ?, question = ?, options = ?, correct = ?, fact = ? WHERE id = ?`),
+  deleteQuestion: db.prepare(`DELETE FROM questions WHERE id = ?`),
+  clearQuestions: db.prepare(`DELETE FROM questions`),
+  allSettings: db.prepare(`SELECT key, value FROM settings`),
+  setSetting: db.prepare(`REPLACE INTO settings (key, value) VALUES (?, ?)`),
 };
 
 /* ---------------- helpers ---------------- */
@@ -123,6 +143,41 @@ function cleanName(raw) {
 }
 const isTeacher = (name) => !!name && name.trim().toLowerCase() === TEACHER_NAME;
 const cleanWord = (v) => String(v ?? '').trim().slice(0, 60);
+
+// имя приходит в заголовке URL-энкоженным (кириллица не проходит в raw-заголовках)
+function headerName(req) {
+  const raw = req.headers['x-player-name'] || '';
+  try { return decodeURIComponent(raw); } catch { return raw; }
+}
+function teacherFrom(req, url) {
+  return url.searchParams.get('name') || headerName(req);
+}
+
+function questionRows() {
+  return q.listQuestions.all().map((r) => ({
+    id: r.id, tag: r.tag, question: r.question,
+    options: JSON.parse(r.options), correct: r.correct, fact: r.fact,
+  }));
+}
+function gameSettings() {
+  const s = {};
+  for (const row of q.allSettings.all()) s[row.key] = row.value;
+  return {
+    startGap: Math.min(8, Math.max(2, Number(s.startGap) || 6)),
+    idleEnabled: s.idleEnabled !== '0',
+  };
+}
+function validateQuestion(b) {
+  const tag = String(b.tag ?? '').trim().slice(0, 30) || 'QUESTION';
+  const question = String(b.question ?? '').trim().slice(0, 300);
+  const fact = String(b.fact ?? '').trim().slice(0, 300);
+  const options = Array.isArray(b.options)
+    ? b.options.map((o) => String(o ?? '').trim().slice(0, 120)).filter(Boolean).slice(0, 4)
+    : [];
+  const correct = Number(b.correct);
+  if (!question || options.length < 2 || !Number.isInteger(correct) || correct < 0 || correct >= options.length) return null;
+  return { tag, question, options: JSON.stringify(options), correct, fact };
+}
 
 function serveStatic(req, res, urlPath) {
   const rel = urlPath === '/' ? '/index.html' : urlPath;
@@ -188,9 +243,44 @@ async function handleApi(req, res, url) {
     return ok(res, { saved: true });
   }
 
+  // GET /api/questions → active custom bank + game rules (public: students need it to play)
+  if (pathname === '/api/questions' && method === 'GET') {
+    return ok(res, { questions: questionRows(), settings: gameSettings() });
+  }
+
+  // Teacher: manage custom questions
+  m = pathname.match(/^\/api\/teacher\/questions(?:\/(\d+))?$/);
+  if (m) {
+    if (!isTeacher(teacherFrom(req, url))) return fail(res, 403, 'Teacher access only');
+    const qid = m[1] ? Number(m[1]) : null;
+    if (method === 'POST' && !qid) {
+      const v = validateQuestion(await readJson(req));
+      if (!v) return fail(res, 400, 'Need question text, 2\u20134 options and a valid correct index');
+      const { lastInsertRowid } = q.insertQuestion.run(v.tag, v.question, v.options, v.correct, v.fact);
+      return ok(res, { saved: true, id: Number(lastInsertRowid) });
+    }
+    if (method === 'PUT' && qid) {
+      const v = validateQuestion(await readJson(req));
+      if (!v) return fail(res, 400, 'Need question text, 2\u20134 options and a valid correct index');
+      q.updateQuestion.run(v.tag, v.question, v.options, v.correct, v.fact, qid);
+      return ok(res, { saved: true });
+    }
+    if (method === 'DELETE' && qid) { q.deleteQuestion.run(qid); return ok(res, { deleted: true }); }
+    if (method === 'DELETE') { q.clearQuestions.run(); return ok(res, { cleared: true }); }
+  }
+
+  // Teacher: game rules
+  if (pathname === '/api/teacher/settings' && method === 'POST') {
+    if (!isTeacher(teacherFrom(req, url))) return fail(res, 403, 'Teacher access only');
+    const body = await readJson(req);
+    q.setSetting.run('startGap', String(Math.min(8, Math.max(2, Number(body.startGap) || 6))));
+    q.setSetting.run('idleEnabled', body.idleEnabled === false ? '0' : '1');
+    return ok(res, { saved: true });
+  }
+
   // Teacher endpoints — identified by the teacher's name
   if (pathname === '/api/teacher/results') {
-    const name = url.searchParams.get('name') || req.headers['x-player-name'];
+    const name = teacherFrom(req, url);
     if (!isTeacher(name)) return fail(res, 403, 'Teacher access only');
     if (method === 'GET') return ok(res, teacherReport());
     if (method === 'DELETE') {

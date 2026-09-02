@@ -213,13 +213,14 @@
   #shark.fed .p-tail{animation-duration:3.2s}
   #shark.mouth-open .p-glasses{animation:glassbounce .5s ease}
   @keyframes glassbounce{35%{transform:translateY(-8px) rotate(-2deg)}65%{transform:translateY(-2px)}}
-  .shark-bubbles i{
-    position:absolute; left:8%; bottom:18%; width:7px; height:7px; border-radius:50%;
-    border:2px solid rgba(255,255,255,.75); opacity:0; animation:sharkbub 4.6s linear infinite;
+  /* кильватерный след: пузырьки сносит назад и вверх ЗА хвостом, не по текстуре */
+  .shark-trail i{
+    position:absolute; left:-4%; top:52%; width:6px; height:6px; border-radius:50%;
+    border:1.5px solid rgba(255,255,255,.5); opacity:0; animation:trailbub 3.8s linear infinite;
   }
-  .shark-bubbles i:nth-child(2){left:14%; width:5px; height:5px; animation-delay:1.7s; animation-duration:5.4s}
-  .shark-bubbles i:nth-child(3){left:2%; width:9px; height:9px; animation-delay:3.1s; animation-duration:6.2s}
-  @keyframes sharkbub{0%{opacity:0; transform:translate(0,0)}12%{opacity:.9}100%{opacity:0; transform:translate(8px,-95px)}}
+  .shark-trail i:nth-child(2){left:-8%; top:44%; width:4px; height:4px; animation-delay:1.4s; animation-duration:4.6s}
+  .shark-trail i:nth-child(3){left:-6%; top:60%; width:5px; height:5px; animation-delay:2.6s; animation-duration:4.2s}
+  @keyframes trailbub{0%{opacity:0; transform:translate(0,0)}12%{opacity:.6}100%{opacity:0; transform:translate(-28px,-36px)}}
   .shark-glint{
     position:absolute; left:76%; top:31%; width:15px; height:15px; background:#fff; pointer-events:none; opacity:0;
     clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);
@@ -367,6 +368,32 @@
   .stat .v{font-family:'Unbounded',sans-serif; font-weight:700; font-size:20px; font-variant-numeric:tabular-nums}
   .stat .l{font-size:12px; font-weight:800; color:var(--ink-soft)}
 
+  /* question builder */
+  .name-input.square{border-radius:14px; width:100%; font-size:14px; padding:10px 14px; flex:none}
+  textarea.name-input{resize:vertical; font-family:'Nunito',sans-serif; line-height:1.4}
+  .qform{display:flex; flex-direction:column; gap:9px; margin-bottom:4px}
+  .qform-opts{display:grid; grid-template-columns:1fr 1fr; gap:9px}
+  .opt-row{display:flex; align-items:center; gap:8px; background:#fff; border-radius:14px; padding:6px 8px 6px 12px; box-shadow:0 3px 0 rgba(14,52,70,.12)}
+  .opt-row input[type=radio]{width:18px; height:18px; accent-color:var(--good); flex:none; cursor:pointer}
+  .opt-row .opt-input{box-shadow:none; border:2px solid #E4F0F4; padding:7px 10px; min-width:0}
+  .qform-actions{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  .big-btn.small{font-size:13px; padding:10px 22px; margin-top:0}
+  .qlist{display:flex; flex-direction:column; gap:8px; max-height:32vh; overflow:auto; padding:2px}
+  .qitem{background:#fff; border-radius:14px; padding:10px 12px; box-shadow:0 3px 0 rgba(14,52,70,.12); display:flex; gap:10px; align-items:flex-start}
+  .qitem .tag{font-family:'Unbounded',sans-serif; font-size:10.5px; font-weight:700; color:#fff; background:var(--sea2); border-radius:8px; padding:4px 8px; white-space:nowrap}
+  .qitem .body{flex:1; min-width:0}
+  .qitem .qq{font-weight:800; font-size:13.5px; line-height:1.35}
+  .qitem .oo{font-size:12.5px; font-weight:700; color:var(--ink-soft); margin-top:3px; line-height:1.5; overflow-wrap:break-word}
+  .qitem .oo b{color:var(--good-dark)}
+  .qitem .act{display:flex; gap:6px; flex:none}
+  .mini-btn{border:0; cursor:pointer; background:#EAF4F8; border-radius:8px; padding:6px 9px; font-size:12px; font-weight:800; color:var(--ink)}
+  .mini-btn.del{background:#FDE6E1; color:var(--coral-dark)}
+  .mini-btn:focus-visible{outline:3px solid var(--coral); outline-offset:2px}
+  .settings-row{display:flex; gap:14px; align-items:center; flex-wrap:wrap; font-size:14px; font-weight:700; background:#fff; border-radius:14px; padding:10px 14px; box-shadow:0 3px 0 rgba(14,52,70,.12)}
+  .settings-row label{display:flex; align-items:center; gap:8px}
+  .mini-input{width:64px; border:2px solid #E4F0F4; border-radius:10px; padding:6px 8px; font-weight:800; font-family:'Nunito',sans-serif; font-size:14px}
+  .settings-row input[type=checkbox]{width:17px; height:17px; accent-color:var(--good)}
+
   /* registration */
   .name-row{display:flex; gap:10px; margin:6px 0 4px; flex-wrap:wrap; justify-content:center}
   .name-input{
@@ -471,7 +498,7 @@
       <div class="caustics"></div>
       <div class="fish-school" aria-hidden="true">
         <svg viewBox="0 0 120 60">
-          <g fill="#FF9A66" opacity=".9">
+          <g fill="#FF9A66" opacity=".9" transform="scale(-1 1) translate(-120 0)">
             <path d="M28 14 C 36 8 46 8 52 14 C 46 20 36 20 28 14 Z M28 14 L20 8 L22 14 L20 20 Z"/>
             <path d="M58 34 C 66 28 76 28 82 34 C 76 40 66 40 58 34 Z M58 34 L50 28 L52 34 L50 40 Z" opacity=".85"/>
             <path d="M24 46 C 31 41 40 41 45 46 C 40 51 31 51 24 46 Z M24 46 L17 41 L19 46 L17 51 Z" opacity=".7"/>
@@ -536,7 +563,7 @@
         <div class="shark-rig" aria-hidden="true">
           <div class="shark-img" id="sharkArt"></div>
           <div class="shark-glint"></div>
-          <div class="shark-bubbles"><i></i><i></i><i></i></div>
+          <div class="shark-trail"><i></i><i></i><i></i></div>
         </div>
       </div>
     </div>
@@ -618,6 +645,47 @@
     </div>
   </div>
 
+  <!-- Question builder -->
+  <div class="overlay" id="builderOv" hidden>
+    <div class="card wide">
+      <div class="teacher-head">
+        <h1>🛠 Question builder</h1>
+        <span class="hint" id="builderStatus"></span>
+        <span class="spacer"></span>
+        <button class="ghost-btn" id="builderClose">✕ Close</button>
+      </div>
+
+      <h2>⚙️ Game rules</h2>
+      <div class="settings-row">
+        <label>Shark gap (mistakes before lunch):
+          <input type="number" id="setGap" class="mini-input" min="2" max="8" step="1" value="6">
+        </label>
+        <label class="chk"><input type="checkbox" id="setIdle" checked> Shark drifts closer while the player thinks</label>
+        <button class="ghost-btn" id="saveSettings" type="button">💾 Save rules</button>
+      </div>
+
+      <h2>✏️ <span id="qFormTitle">New question</span></h2>
+      <form id="qForm" class="qform" autocomplete="off">
+        <input class="name-input square" id="qTag" maxlength="30" placeholder="Short chip label, e.g. HABITAT (optional)">
+        <textarea class="name-input square" id="qText" maxlength="300" rows="2" placeholder="Question text. Use ___ for a gap."></textarea>
+        <div class="qform-opts" id="qOpts"></div>
+        <input class="name-input square" id="qFact" maxlength="300" placeholder="Explanation shown after the answer (optional)">
+        <div class="qform-actions">
+          <button class="big-btn small" type="submit" id="qSubmit">＋ Add question</button>
+          <button class="ghost-btn" type="button" id="qCancel" hidden>Cancel</button>
+          <span class="hint">Mark the correct option with the green radio.</span>
+        </div>
+      </form>
+
+      <h2>📚 Custom questions <span class="hint" id="qCount"></span></h2>
+      <div class="qlist" id="qList"></div>
+      <div class="teacher-actions">
+        <button class="ghost-btn danger" id="qClear">🗑 Clear custom questions</button>
+      </div>
+      <p class="hint" style="text-align:left; margin-top:8px">Students play your custom set as soon as it has at least 2 questions; otherwise the built-in shark quiz is used. Every new game picks up your latest changes.</p>
+    </div>
+  </div>
+
   <!-- Teacher panel -->
   <div class="overlay" id="teacherOv" hidden>
     <div class="card wide">
@@ -644,6 +712,7 @@
         </table>
       </div>
       <div class="teacher-actions">
+        <button class="ghost-btn" id="builderBtn">🛠 Question builder</button>
         <button class="ghost-btn" id="teacherRefresh">🔄 Refresh</button>
         <button class="ghost-btn danger" id="teacherReset">🗑 Reset all results</button>
       </div>
@@ -678,8 +747,9 @@
      fact:'A quick reaction \u2192 Past Simple: get \u2014 got \u2014 got.'}
   ];
 
-  var TOTAL = WORDS.length;      // 20
-  var START_GAP = 6;             // steps between the shark and Shirley
+  var DEFAULT_WORDS = WORDS;     // встроенный набор — используется, пока учитель не создал свой
+  var TOTAL = WORDS.length;
+  var SETTINGS = { startGap: 6, idleEnabled: true };
   var IDLE_GRACE = 8;            // seconds of calm thinking
   var IDLE_STEP_SEC = 15;        // idle seconds it takes the shark to gain one step
 
@@ -715,7 +785,7 @@
     return ready.then(function(base){
       return fetch(base + path, {
         method: method || 'GET',
-        headers: { 'Content-Type': 'application/json', 'X-Player-Name': player.name || '' },
+        headers: { 'Content-Type': 'application/json', 'X-Player-Name': encodeURIComponent(player.name || '') },
         body: body ? JSON.stringify(body) : undefined
       });
     }).then(function(r){
@@ -723,6 +793,24 @@
         if(!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
         return data;
       });
+    });
+  }
+  function loadBank(){
+    return api('api/questions').then(function(d){
+      if(d.questions && d.questions.length >= 2){
+        WORDS = d.questions.map(function(r){
+          return { w: r.tag, q: r.question, opts: r.options, a: r.correct, fact: r.fact || '' };
+        });
+      } else {
+        WORDS = DEFAULT_WORDS;
+      }
+      TOTAL = WORDS.length;
+      if(d.settings){
+        SETTINGS.startGap = Math.min(8, Math.max(2, Number(d.settings.startGap) || 6));
+        SETTINGS.idleEnabled = d.settings.idleEnabled !== false;
+      }
+    }).catch(function(){
+      WORDS = DEFAULT_WORDS; TOTAL = WORDS.length;
     });
   }
   function reportMistake(w, chosen){
@@ -769,7 +857,7 @@
   function hud(){
     $('leftNum').textContent = TOTAL - progress;
     var d = $('gapDots'); d.innerHTML = '';
-    for(var i=0;i<START_GAP;i++){
+    for(var i=0;i<SETTINGS.startGap;i++){
       var s = document.createElement('span');
       s.className = 'dot' + (i < Math.ceil(gap - 0.01) ? ' on' : '');
       d.appendChild(s);
@@ -783,6 +871,7 @@
   /* ---------- idle: the shark creeps closer ---------- */
   function startIdle(){
     stopIdle();
+    if(!SETTINGS.idleEnabled) return;
     questionAt = Date.now();
     idleWarned = false;
     idleTimer = setInterval(function(){
@@ -897,17 +986,11 @@
     scene.appendChild(el);
     setTimeout(function(){ el.remove(); }, 1200);
   }
-  // лёгкие брызги, пока акула плавает
-  setInterval(function(){
-    if(over || !$('startOv').hidden || !$('teacherOv').hidden) return;
-    spawnSplash(sharkLeft() - 3 - Math.random() * 5, 55 + Math.random() * 6, 4, 22);
-  }, 3800);
-
   function sharkAdvance(){
     shark.classList.add('lunge','mouth-open');
     place();
     scene.classList.add('shake');
-    spawnSplash(sharkLeft() - 2, 54, 12, 46);
+    spawnSplash(sharkLeft() + 1.5, 53, 12, 46);
     setTimeout(function(){ shark.classList.remove('mouth-open'); }, 500);
     setTimeout(function(){ shark.classList.remove('lunge'); scene.classList.remove('shake'); }, 800);
   }
@@ -976,7 +1059,7 @@
     $('endEmo').textContent = won ? '🏖️🎉' : '🦈😋';
     $('endTitle').textContent = won ? 'Shirley made it to the beach!' : 'Chomp! The shark had lunch…';
     $('endText').innerHTML = won
-      ? 'All <b>10 questions</b> answered! The shark stayed hungry and swam away to sulk. Shirley is already sunbathing.'
+      ? 'All <b>' + TOTAL + ' questions</b> answered! The shark stayed hungry and swam away to sulk. Shirley is already sunbathing.'
       : 'Don\'t worry: it\'s cozy in there, there\'s even Wi-Fi. The shark promises to spit her out before the next round. Try again — same questions, brand-new chance!';
     $('statWords').textContent = progress;
     $('statMiss').textContent = mistakes;
@@ -996,7 +1079,7 @@
   /* ---------- start / restart ---------- */
   function reset(){
     stopIdle();
-    progress = 0; gap = START_GAP; mistakes = 0; over = false; locked = false;
+    progress = 0; gap = SETTINGS.startGap; mistakes = 0; over = false; locked = false;
     queue = shuffle(Array.apply(null, {length: TOTAL}).map(function(_, i){ return i; }));
     shirley.className = 'actor'; shirley.style.left = ''; shirley.style.bottom = '';
     shark.className = 'actor'; shark.style.left = '';
@@ -1034,7 +1117,7 @@
     var name = $('nameInput').value.replace(/\s+/g,' ').trim();
     if(!name){ $('nameHint').className = 'hint err'; $('nameHint').textContent = 'Please type your name first.'; return; }
     ac(); // wake audio on a user gesture
-    register(name).then(function(){
+    register(name).then(function(){ return loadBank(); }).then(function(){
       $('startOv').hidden = true;
       reset();
     }).catch(function(){});
@@ -1043,7 +1126,7 @@
   $('retryBtn').addEventListener('click', function(){
     var btn = this; btn.disabled = true;
     // a new game = a new session for the same player
-    register(player.name).then(function(){
+    register(player.name).then(function(){ return loadBank(); }).then(function(){
       $('endOv').hidden = true;
       reset();
     }).catch(function(){
@@ -1141,6 +1224,141 @@
     });
   });
 
+  /* ---------- question builder ---------- */
+  var editingId = null;
+  function tQuery(){ return '?name=' + encodeURIComponent(player.name); }
+  function builderMsg(t, err){
+    var el = $('builderStatus'); el.className = 'hint' + (err ? ' err' : ''); el.textContent = t || '';
+  }
+  function optRows(){
+    var box = $('qOpts'); box.innerHTML = '';
+    for(var i = 0; i < 4; i++){
+      var lab = document.createElement('label');
+      lab.className = 'opt-row';
+      lab.innerHTML = '<input type="radio" name="qCorrect" value="' + i + '"' + (i === 0 ? ' checked' : '') + '>' +
+        '<input type="text" class="name-input square opt-input" maxlength="120" placeholder="Option ' + (i + 1) + (i > 1 ? ' (optional)' : '') + '">';
+      box.appendChild(lab);
+    }
+  }
+  function qFormReset(){
+    editingId = null;
+    $('qFormTitle').textContent = 'New question';
+    $('qSubmit').textContent = '＋ Add question';
+    $('qCancel').hidden = true;
+    $('qTag').value = ''; $('qText').value = ''; $('qFact').value = '';
+    optRows();
+  }
+  function loadBuilder(){
+    return api('api/questions').then(function(d){
+      var rows = d.questions || [];
+      $('qCount').textContent = rows.length
+        ? '· ' + rows.length + ' — students play this set'
+        : '· none — students play the built-in shark quiz';
+      var list = $('qList'); list.innerHTML = '';
+      if(!rows.length){
+        var e = document.createElement('div');
+        e.className = 'hint'; e.style.textAlign = 'left';
+        e.textContent = 'No custom questions yet — add the first one above!';
+        list.appendChild(e);
+      }
+      rows.forEach(function(r){
+        var it = document.createElement('div'); it.className = 'qitem';
+        var tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = r.tag;
+        var body = document.createElement('div'); body.className = 'body';
+        var qq = document.createElement('div'); qq.className = 'qq'; qq.textContent = r.question;
+        var oo = document.createElement('div'); oo.className = 'oo';
+        r.options.forEach(function(o, i){
+          var piece = document.createElement(i === r.correct ? 'b' : 'span');
+          piece.textContent = (i === r.correct ? '✓ ' : '· ') + o + '   ';
+          oo.appendChild(piece);
+        });
+        body.appendChild(qq); body.appendChild(oo);
+        if(r.fact){
+          var ff = document.createElement('div'); ff.className = 'oo'; ff.textContent = '💡 ' + r.fact;
+          body.appendChild(ff);
+        }
+        var act = document.createElement('div'); act.className = 'act';
+        var eb = document.createElement('button'); eb.type = 'button'; eb.className = 'mini-btn'; eb.textContent = '✏️'; eb.title = 'Edit';
+        eb.addEventListener('click', function(){ startEdit(r); });
+        var db = document.createElement('button'); db.type = 'button'; db.className = 'mini-btn del'; db.textContent = '🗑'; db.title = 'Delete';
+        db.addEventListener('click', function(){
+          if(!confirm('Delete this question?')) return;
+          api('api/teacher/questions/' + r.id + tQuery(), 'DELETE')
+            .then(function(){ builderMsg('Deleted ✓'); loadBuilder(); })
+            .catch(function(err){ builderMsg(err.message, true); });
+        });
+        act.appendChild(eb); act.appendChild(db);
+        it.appendChild(tag); it.appendChild(body); it.appendChild(act);
+        list.appendChild(it);
+      });
+      if(d.settings){
+        $('setGap').value = d.settings.startGap || 6;
+        $('setIdle').checked = d.settings.idleEnabled !== false;
+      }
+    }).catch(function(err){ builderMsg('Error: ' + err.message, true); });
+  }
+  function startEdit(r){
+    editingId = r.id;
+    $('qFormTitle').textContent = 'Edit question';
+    $('qSubmit').textContent = '💾 Save changes';
+    $('qCancel').hidden = false;
+    $('qTag').value = r.tag; $('qText').value = r.question; $('qFact').value = r.fact || '';
+    optRows();
+    var rows = $('qOpts').querySelectorAll('.opt-input');
+    r.options.forEach(function(o, i){ if(rows[i]) rows[i].value = o; });
+    var radio = $('qOpts').querySelector('input[name="qCorrect"][value="' + r.correct + '"]');
+    if(radio) radio.checked = true;
+  }
+  $('qForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    var text = $('qText').value.trim();
+    var inputs = $('qOpts').querySelectorAll('.opt-input');
+    var opts = [];
+    for(var i = 0; i < inputs.length; i++){ opts.push(inputs[i].value.trim()); }
+    var checked = $('qOpts').querySelector('input[name="qCorrect"]:checked');
+    var correctIdx = checked ? Number(checked.value) : 0;
+    var filled = opts.filter(function(o){ return o; });
+    if(!text){ builderMsg('Question text is required.', true); return; }
+    if(filled.length < 2){ builderMsg('At least 2 options are required.', true); return; }
+    if(!opts[correctIdx]){ builderMsg('The marked correct option is empty — mark a filled one.', true); return; }
+    var packed = [], newCorrect = 0;
+    opts.forEach(function(o, i){ if(o){ if(i === correctIdx) newCorrect = packed.length; packed.push(o); } });
+    var tag = $('qTag').value.trim() || text.replace(/[^A-Za-zА-Яа-яЁё0-9 ]/g, '').slice(0, 14).trim().toUpperCase() || 'QUESTION';
+    var payload = { tag: tag, question: text, options: packed, correct: newCorrect, fact: $('qFact').value.trim() };
+    var req = editingId
+      ? api('api/teacher/questions/' + editingId + tQuery(), 'PUT', payload)
+      : api('api/teacher/questions' + tQuery(), 'POST', payload);
+    req.then(function(){
+      builderMsg(editingId ? 'Question updated ✓' : 'Question added ✓');
+      qFormReset(); loadBuilder();
+    }).catch(function(err){ builderMsg(err.message, true); });
+  });
+  $('qCancel').addEventListener('click', qFormReset);
+  $('qClear').addEventListener('click', function(){
+    if(!confirm('Delete ALL custom questions? Students will play the built-in set again.')) return;
+    api('api/teacher/questions' + tQuery(), 'DELETE')
+      .then(function(){ qFormReset(); builderMsg('Custom set cleared ✓'); loadBuilder(); })
+      .catch(function(err){ builderMsg(err.message, true); });
+  });
+  $('saveSettings').addEventListener('click', function(){
+    var gap = Math.min(8, Math.max(2, Number($('setGap').value) || 6));
+    $('setGap').value = gap;
+    api('api/teacher/settings' + tQuery(), 'POST', { startGap: gap, idleEnabled: $('setIdle').checked })
+      .then(function(){ builderMsg('Rules saved ✓ — apply from the next game'); })
+      .catch(function(err){ builderMsg(err.message, true); });
+  });
+  $('builderBtn').addEventListener('click', function(){
+    $('teacherOv').hidden = true;
+    if(teacherTimer){ clearInterval(teacherTimer); teacherTimer = null; }
+    qFormReset(); builderMsg('');
+    $('builderOv').hidden = false;
+    loadBuilder();
+  });
+  $('builderClose').addEventListener('click', function(){
+    $('builderOv').hidden = true;
+    if(!over && !locked) startIdle();
+  });
+
   /* ---------- boot ---------- */
   // подгружаем SVG акулы инлайном, чтобы CSS анимировал её части (хвост, плавники, очки)
   fetch('shark.svg').then(function(r){ if(!r.ok) throw new Error('svg'); return r.text(); }).then(function(svg){
@@ -1154,7 +1372,7 @@
   // demo mode for quick previews: ?demo=1 starts offline without registration
   if(new URLSearchParams(location.search).get('demo')){
     player.name = 'Demo'; player.role = 'student'; player.sessionId = null;
-    $('startOv').hidden = true; reset();
+    loadBank().then(function(){ $('startOv').hidden = true; reset(); });
   }
 })();
 </script>

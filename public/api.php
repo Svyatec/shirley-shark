@@ -72,6 +72,17 @@ try {
         )");
     $db->exec('CREATE INDEX IF NOT EXISTS idx_mistakes_session ON mistakes(session_id)');
     $db->exec('CREATE INDEX IF NOT EXISTS idx_mistakes_word ON mistakes(word)');
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS questions (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            tag        TEXT    NOT NULL,
+            question   TEXT    NOT NULL,
+            options    TEXT    NOT NULL,
+            correct    INTEGER NOT NULL,
+            fact       TEXT    NOT NULL DEFAULT '',
+            created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+        )");
+    $db->exec('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
 } catch (Throwable $e) {
     fail(500, 'SQLite unavailable: ' . $e->getMessage());
 }
@@ -97,6 +108,54 @@ function is_teacher(?string $name): bool {
 function clean_word($v): string {
     $s = trim((string)($v ?? ''));
     return function_exists('mb_substr') ? mb_substr($s, 0, 60) : substr($s, 0, 60);
+}
+function cut($v, int $n): string {
+    $s = trim((string)($v ?? ''));
+    return function_exists('mb_substr') ? mb_substr($s, 0, $n) : substr($s, 0, $n);
+}
+// имя приходит в заголовке URL-энкоженным (кириллица не проходит в raw-заголовках)
+function header_name(): ?string {
+    $raw = $_SERVER['HTTP_X_PLAYER_NAME'] ?? null;
+    return is_string($raw) ? rawurldecode($raw) : null;
+}
+function teacher_from_request(): ?string {
+    $name = $_GET['name'] ?? null;
+    return is_string($name) && $name !== '' ? $name : header_name();
+}
+function question_rows(PDO $db): array {
+    $out = [];
+    foreach ($db->query('SELECT * FROM questions ORDER BY id')->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $out[] = [
+            'id' => (int)$r['id'], 'tag' => $r['tag'], 'question' => $r['question'],
+            'options' => json_decode($r['options'], true), 'correct' => (int)$r['correct'], 'fact' => $r['fact'],
+        ];
+    }
+    return $out;
+}
+function game_settings(PDO $db): array {
+    $s = [];
+    foreach ($db->query('SELECT key, value FROM settings')->fetchAll(PDO::FETCH_ASSOC) as $r) $s[$r['key']] = $r['value'];
+    return [
+        'startGap' => min(8, max(2, (int)($s['startGap'] ?? 6) ?: 6)),
+        'idleEnabled' => ($s['idleEnabled'] ?? '1') !== '0',
+    ];
+}
+function validate_question(array $b): ?array {
+    $tag = cut($b['tag'] ?? '', 30);
+    if ($tag === '') $tag = 'QUESTION';
+    $question = cut($b['question'] ?? '', 300);
+    $fact = cut($b['fact'] ?? '', 300);
+    $options = [];
+    if (isset($b['options']) && is_array($b['options'])) {
+        foreach ($b['options'] as $o) {
+            $o = cut($o, 120);
+            if ($o !== '') $options[] = $o;
+            if (count($options) >= 4) break;
+        }
+    }
+    $correct = isset($b['correct']) && is_numeric($b['correct']) ? (int)$b['correct'] : -1;
+    if ($question === '' || count($options) < 2 || $correct < 0 || $correct >= count($options)) return null;
+    return ['tag' => $tag, 'question' => $question, 'options' => json_encode($options, JSON_UNESCAPED_UNICODE), 'correct' => $correct, 'fact' => $fact];
 }
 
 /* ---------- routes ---------- */
@@ -147,10 +206,54 @@ if (preg_match('#^/api/sessions/(\d+)/finish$#', $path, $m) && $method === 'POST
     out(200, ['saved' => true]);
 }
 
+// GET api/questions — active custom bank + game rules (public)
+if ($path === '/api/questions' && $method === 'GET') {
+    out(200, ['questions' => question_rows($db), 'settings' => game_settings($db)]);
+}
+
+// Teacher: manage custom questions
+if (preg_match('#^/api/teacher/questions(?:/(\d+))?$#', $path, $m)) {
+    if (!is_teacher(teacher_from_request())) fail(403, 'Teacher access only');
+    $qid = isset($m[1]) ? (int)$m[1] : null;
+    if ($method === 'POST' && $qid === null) {
+        $v = validate_question(body());
+        if ($v === null) fail(400, 'Need question text, 2-4 options and a valid correct index');
+        $st = $db->prepare('INSERT INTO questions (tag, question, options, correct, fact) VALUES (?, ?, ?, ?, ?)');
+        $st->execute([$v['tag'], $v['question'], $v['options'], $v['correct'], $v['fact']]);
+        out(200, ['saved' => true, 'id' => (int)$db->lastInsertId()]);
+    }
+    if ($method === 'PUT' && $qid !== null) {
+        $v = validate_question(body());
+        if ($v === null) fail(400, 'Need question text, 2-4 options and a valid correct index');
+        $st = $db->prepare('UPDATE questions SET tag = ?, question = ?, options = ?, correct = ?, fact = ? WHERE id = ?');
+        $st->execute([$v['tag'], $v['question'], $v['options'], $v['correct'], $v['fact'], $qid]);
+        out(200, ['saved' => true]);
+    }
+    if ($method === 'DELETE' && $qid !== null) {
+        $db->prepare('DELETE FROM questions WHERE id = ?')->execute([$qid]);
+        out(200, ['deleted' => true]);
+    }
+    if ($method === 'DELETE') {
+        $db->exec('DELETE FROM questions');
+        out(200, ['cleared' => true]);
+    }
+}
+
+// Teacher: game rules
+if ($path === '/api/teacher/settings' && $method === 'POST') {
+    if (!is_teacher(teacher_from_request())) fail(403, 'Teacher access only');
+    $b = body();
+    $gap = min(8, max(2, (int)($b['startGap'] ?? 6) ?: 6));
+    $st = $db->prepare('REPLACE INTO settings (key, value) VALUES (?, ?)');
+    $st->execute(['startGap', (string)$gap]);
+    $st->execute(['idleEnabled', (isset($b['idleEnabled']) && $b['idleEnabled'] === false) ? '0' : '1']);
+    out(200, ['saved' => true]);
+}
+
 // GET / DELETE api/teacher/results?name=Shirley
 if ($path === '/api/teacher/results') {
-    $name = $_GET['name'] ?? ($_SERVER['HTTP_X_PLAYER_NAME'] ?? null);
-    if (!is_teacher(is_string($name) ? $name : null)) fail(403, 'Teacher access only');
+    $name = teacher_from_request();
+    if (!is_teacher($name)) fail(403, 'Teacher access only');
 
     if ($method === 'GET') {
         $totals = $db->query("
