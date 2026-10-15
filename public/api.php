@@ -1,6 +1,6 @@
 <?php
 /**
- * Shirley & the Shark — API for shared hosting (PHP 7.4+, pdo_sqlite).
+ * Shirley's English Games — API for shared hosting (PHP 7.4+, pdo_sqlite).
  * Same routes and JSON responses as the Node server (server.js).
  *
  * Works in two modes:
@@ -83,6 +83,16 @@ try {
             created_at TEXT    NOT NULL DEFAULT (datetime('now'))
         )");
     $db->exec('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS game_configs (
+            game       TEXT PRIMARY KEY,
+            config     TEXT NOT NULL,
+            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )");
+    // миграция: старые сессии принадлежат акуле
+    $cols = array_column($db->query('PRAGMA table_info(sessions)')->fetchAll(PDO::FETCH_ASSOC), 'name');
+    if (!in_array('game', $cols, true)) $db->exec("ALTER TABLE sessions ADD COLUMN game TEXT NOT NULL DEFAULT 'shark'");
+    if (!in_array('detail', $cols, true)) $db->exec("ALTER TABLE sessions ADD COLUMN detail TEXT NOT NULL DEFAULT ''");
 } catch (Throwable $e) {
     fail(500, 'SQLite unavailable: ' . $e->getMessage());
 }
@@ -121,6 +131,10 @@ function header_name(): ?string {
 function teacher_from_request(): ?string {
     $name = $_GET['name'] ?? null;
     return is_string($name) && $name !== '' ? $name : header_name();
+}
+function clean_game($v): ?string {
+    $s = (string)($v ?? '');
+    return preg_match('/^[a-z0-9_-]{1,30}$/', $s) ? $s : null;
 }
 function question_rows(PDO $db): array {
     $out = [];
@@ -165,11 +179,14 @@ if ($path === '/api/ping') out(200, ['ok' => true, 'backend' => 'php']);
 
 // POST api/sessions {name}
 if ($path === '/api/sessions' && $method === 'POST') {
-    $name = clean_name(body()['name'] ?? null);
+    $b = body();
+    $name = clean_name($b['name'] ?? null);
     if ($name === null) fail(400, 'Name must be 1–30 characters');
     if (is_teacher($name)) out(200, ['role' => 'teacher', 'name' => $name, 'sessionId' => null]);
-    $st = $db->prepare('INSERT INTO sessions (name) VALUES (?)');
-    $st->execute([$name]);
+    $game = clean_game($b['game'] ?? null) ?? 'shark';
+    $detail = cut($b['detail'] ?? '', 80);
+    $st = $db->prepare('INSERT INTO sessions (name, game, detail) VALUES (?, ?, ?)');
+    $st->execute([$name, $game, $detail]);
     out(200, ['role' => 'student', 'name' => $name, 'sessionId' => (int)$db->lastInsertId()]);
 }
 
@@ -196,8 +213,8 @@ if (preg_match('#^/api/sessions/(\d+)/finish$#', $path, $m) && $method === 'POST
     $st->execute([$id]);
     if (!$st->fetch()) fail(404, 'Session not found');
     $b = body();
-    $status = ($b['status'] ?? '') === 'won' ? 'won' : ((($b['status'] ?? '') === 'eaten') ? 'eaten' : null);
-    if ($status === null) fail(400, 'status must be won or eaten');
+    $status = in_array($b['status'] ?? '', ['won', 'eaten', 'done'], true) ? $b['status'] : null;
+    if ($status === null) fail(400, 'status must be won, eaten or done');
     $wordsDone = max(0, min(99, (int)($b['wordsDone'] ?? 0)));
     $durationSec = max(0, min(86400, (int)round((float)($b['durationSec'] ?? 0))));
     $st = $db->prepare("UPDATE sessions SET status = ?, words_done = ?, duration_sec = ?, finished_at = datetime('now')
@@ -239,6 +256,34 @@ if (preg_match('#^/api/teacher/questions(?:/(\d+))?$#', $path, $m)) {
     }
 }
 
+// GET api/games/{game}/config — настройки игры, сохранённые учителем (public)
+if (preg_match('#^/api/games/([a-z0-9_-]{1,30})/config$#', $path, $m) && $method === 'GET') {
+    $st = $db->prepare('SELECT config, updated_at FROM game_configs WHERE game = ?');
+    $st->execute([$m[1]]);
+    $row = $st->fetch(PDO::FETCH_ASSOC);
+    out(200, ['config' => $row ? json_decode($row['config'], true) : null, 'updatedAt' => $row ? $row['updated_at'] : null]);
+}
+
+// Teacher: save / reset a game's config
+if (preg_match('#^/api/teacher/games/([a-z0-9_-]{1,30})/config$#', $path, $m)) {
+    if (!is_teacher(teacher_from_request())) fail(403, 'Teacher access only');
+    if ($method === 'PUT') {
+        $raw = file_get_contents('php://input', false, null, 0, 131072);
+        $b = json_decode((string)$raw, true);
+        $cfg = is_array($b) ? ($b['config'] ?? null) : null;
+        if (!is_array($cfg) || (count($cfg) && array_keys($cfg) === range(0, count($cfg) - 1))) {
+            fail(400, 'config must be an object');
+        }
+        $st = $db->prepare("REPLACE INTO game_configs (game, config, updated_at) VALUES (?, ?, datetime('now'))");
+        $st->execute([$m[1], json_encode($cfg, JSON_UNESCAPED_UNICODE)]);
+        out(200, ['saved' => true]);
+    }
+    if ($method === 'DELETE') {
+        $db->prepare('DELETE FROM game_configs WHERE game = ?')->execute([$m[1]]);
+        out(200, ['cleared' => true]);
+    }
+}
+
 // Teacher: game rules
 if ($path === '/api/teacher/settings' && $method === 'POST') {
     if (!is_teacher(teacher_from_request())) fail(403, 'Teacher access only');
@@ -256,34 +301,45 @@ if ($path === '/api/teacher/results') {
     if (!is_teacher($name)) fail(403, 'Teacher access only');
 
     if ($method === 'GET') {
-        $totals = $db->query("
+        $game = clean_game($_GET['game'] ?? null) ?? 'shark';
+
+        $st = $db->prepare("
             SELECT COUNT(*) AS games,
                    COUNT(DISTINCT lower(name)) AS players,
                    COALESCE(SUM(status = 'won'), 0) AS won,
                    COALESCE(SUM(status = 'eaten'), 0) AS eaten,
-                   (SELECT COUNT(*) FROM mistakes m JOIN sessions f ON f.id = m.session_id AND f.status != 'playing') AS mistakes
-            FROM sessions WHERE status != 'playing'")->fetch(PDO::FETCH_ASSOC);
+                   COALESCE(SUM(status = 'done'), 0) AS done,
+                   (SELECT COUNT(*) FROM mistakes m JOIN sessions f ON f.id = m.session_id AND f.status != 'playing'
+                     WHERE (? = 'all' OR f.game = ?)) AS mistakes
+            FROM sessions WHERE status != 'playing' AND (? = 'all' OR game = ?)");
+        $st->execute([$game, $game, $game, $game]);
+        $totals = $st->fetch(PDO::FETCH_ASSOC);
         foreach ($totals as $k => $v) $totals[$k] = (int)$v;
 
-        $top = $db->query("
-            SELECT m.word, m.correct, COUNT(*) AS count, COUNT(DISTINCT m.session_id) AS players
+        $st = $db->prepare("
+            SELECT m.word, m.correct, f.game, COUNT(*) AS count, COUNT(DISTINCT m.session_id) AS players
             FROM mistakes m JOIN sessions f ON f.id = m.session_id AND f.status != 'playing'
-            GROUP BY m.word ORDER BY count DESC, m.word ASC LIMIT 2")->fetchAll(PDO::FETCH_ASSOC);
+            WHERE (? = 'all' OR f.game = ?)
+            GROUP BY m.word, f.game ORDER BY count DESC, m.word ASC LIMIT 5");
+        $st->execute([$game, $game]);
+        $top = $st->fetchAll(PDO::FETCH_ASSOC);
         $tc = $db->prepare("SELECT m.chosen FROM mistakes m JOIN sessions f ON f.id = m.session_id AND f.status != 'playing'
-                            WHERE m.word = ? GROUP BY m.chosen ORDER BY COUNT(*) DESC LIMIT 1");
+                            WHERE m.word = ? AND f.game = ? GROUP BY m.chosen ORDER BY COUNT(*) DESC LIMIT 1");
         foreach ($top as &$row) {
             $row['count'] = (int)$row['count'];
             $row['players'] = (int)$row['players'];
-            $tc->execute([$row['word']]);
+            $tc->execute([$row['word'], $row['game']]);
             $row['typicalWrong'] = $tc->fetchColumn() ?: null;
         }
         unset($row);
 
-        $sessions = $db->query("
-            SELECT s.id, s.name, s.status, s.words_done, s.duration_sec, s.started_at, s.finished_at,
+        $st = $db->prepare("
+            SELECT s.id, s.name, s.game, s.detail, s.status, s.words_done, s.duration_sec, s.started_at, s.finished_at,
                    (SELECT COUNT(*) FROM mistakes m WHERE m.session_id = s.id) AS mistakes
-            FROM sessions s WHERE s.status != 'playing'
-            ORDER BY s.started_at DESC, s.id DESC LIMIT 500")->fetchAll(PDO::FETCH_ASSOC);
+            FROM sessions s WHERE s.status != 'playing' AND (? = 'all' OR s.game = ?)
+            ORDER BY s.started_at DESC, s.id DESC LIMIT 500");
+        $st->execute([$game, $game]);
+        $sessions = $st->fetchAll(PDO::FETCH_ASSOC);
         foreach ($sessions as &$s) {
             $s['id'] = (int)$s['id'];
             $s['words_done'] = (int)$s['words_done'];
@@ -292,7 +348,7 @@ if ($path === '/api/teacher/results') {
         }
         unset($s);
 
-        out(200, ['totals' => $totals, 'topMistakes' => $top, 'sessions' => $sessions, 'teacherName' => TEACHER_NAME]);
+        out(200, ['totals' => $totals, 'topMistakes' => $top, 'sessions' => $sessions, 'teacherName' => TEACHER_NAME, 'game' => $game]);
     }
 
     if ($method === 'DELETE') {

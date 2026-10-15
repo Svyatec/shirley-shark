@@ -1,6 +1,13 @@
-# Shirley & the Shark 🏄‍♀️🦈
+# Shirley's English Games 🎮
 
-A classroom mini-game about sharks: quiz facts + B1 English grammar. Surfer Shirley paddles to the beach by answering questions; every mistake (or too much idling) brings the hungry shark closer. Results of every player are stored in SQLite and shown on the teacher's panel.
+Classroom English mini-games with one teacher back office. Node + SQLite (zero dependencies) or plain PHP on shared hosting.
+
+| Game | Path | For | Idea |
+| --- | --- | --- | --- |
+| 🐛 Hungry Caterpillar | `/caterpillar/` | young / beginner (Chinese kids) | Eat the words **in the right order**; no losing. The caterpillar grows, turns into a butterfly, says "Thank you!" and flies away. Butterflies are collected in an album. |
+| 🦈 Shirley & the Shark | `/shark/` | B1 | Quiz + grammar; mistakes bring the shark closer. |
+
+`/` is the game menu, `/admin/` is the teacher back office (Chinese UI), `/teacher-guide.html` is the teacher's manual in Chinese (also shown inside the back office, tab 📖).
 
 ## Run
 
@@ -8,49 +15,59 @@ A classroom mini-game about sharks: quiz facts + B1 English grammar. Surfer Shir
 npm start        # or: node --no-warnings server.js
 ```
 
-Open `http://localhost:3000`. The console also prints LAN addresses (`http://192.168.x.x:3000`) — share one of them with students on the same Wi-Fi.
+Open `http://localhost:3000`. The console prints LAN addresses (`http://192.168.x.x:3000`) for students on the same Wi-Fi. Requires **Node 22.13+** (built-in `node:sqlite`). The database is created at `data/game.db`.
 
-Requires **Node 22.13+** (built-in `node:sqlite`, no npm dependencies). The database is created automatically at `data/game.db`.
+Teacher name (case-insensitive): default **`Shirley`**, change with `TEACHER_NAME=... node server.js` (Node) or `TEACHER_NAME` in `public/api.php` (PHP). Playing with the teacher name is a practice mode: nothing is saved.
 
-## How it works
-
-- The quiz has **10 questions** (shark facts, True/False, Past Simple / Past Continuous). A wrong question returns to the queue until answered.
-- **Students** type their name → *Save & start* → play. Each mistake and the final result (reached beach / eaten, words done, mistakes, time) are saved live.
-- **Teacher** types the magic name **`Shirley`** (change with `TEACHER_NAME=... node server.js`). The interface is the same, plus a **📋 Teacher panel** button in the top bar with:
-  - totals (players, games, mistakes, won / eaten),
-  - the **two most common mistakes** across all players (word, how often, the typical wrong answer),
-  - a table of all players with their mistakes,
-  - **Refresh** and **Reset all results** (wipes the database).
-- Teacher practice games are not stored.
-- **Question builder** (🛠 button inside the teacher panel) lets the teacher fully customize the game: write questions with 2-4 options, mark the correct one, add an explanation shown after the answer, edit and delete entries. When the custom set has at least 2 questions, every new game uses it instead of the built-in shark quiz; "Clear custom questions" brings the default set back. Game rules are editable too: the shark gap (mistakes before being eaten, 2-8) and whether the shark drifts closer while the player thinks. Everything is stored in the same SQLite database.
-- Player names may be in any script (Cyrillic, Chinese, Thai, ...) — data travels as UTF-8 JSON.
-
-## Shared hosting (PHP) — no Node needed
-
-Regular shared hosting cannot run Node. Upload the **contents of `public/`** to the site root (or any subfolder):
+## Structure
 
 ```
-index.html   shark.svg   api.php   .htaccess   data/.htaccess
+public/
+  index.html              game menu
+  shark/                  Shirley & the Shark (own question builder inside the game)
+  caterpillar/            index.html + game.js + defaults.js (built-in rounds, also used by the admin)
+  admin/index.html        back office: results of all games, caterpillar editor, link to shark builder, guide viewer
+  teacher-guide.html      Chinese manual (print-friendly)
+  shared/core.js,base.css API detection, speech (browser SpeechSynthesis), sounds, base styles
+  api.php  .htaccess  data/   PHP backend for shared hosting
+server.js                 Node backend (same routes as api.php)
 ```
 
-Requirements: PHP 7.4+ with `pdo_sqlite` (present on virtually every shared host). The `data/` folder must be writable — the SQLite database `data/game.db` is created automatically on first request, and `.htaccess` blocks direct downloads of it.
+No external fonts / CDNs anywhere (they are often blocked in mainland China).
 
-The frontend detects the backend automatically: it tries `api/ping` (Node or Apache rewrite) and falls back to `api.php/api/ping` when `mod_rewrite` is off. No configuration needed. The teacher name for the PHP backend is set in `api.php` (`TEACHER_NAME`).
+## Adding a new game
 
-## Extras
+1. Create `public/<game>/index.html`, include `../shared/core.js` (`data-root="../"`).
+2. Start a run with `Games.startSession(name, '<game>', detail)`, report `Games.reportMistake(word, chosen, correct)`, finish with `Games.finishSession('done', words, seconds)`.
+3. Store teacher-editable content with `GET /api/games/<game>/config` (game) and `PUT /api/teacher/games/<game>/config` (admin). The config is any JSON object.
+4. Add a tab with the editor in `public/admin/index.html`, a card in `public/index.html`, a chapter in `public/teacher-guide.html`.
 
-- The shark artwork lives in `public/shark.svg`; the animation rig (idle sway, waterline foam, bubbles, sunglasses glint, lunge splash, bite snap, fed belly) is pure CSS in `public/index.html`.
-- `http://localhost:3000/?demo=1` starts the game instantly without registration (nothing is saved) — handy for previews.
+## Caterpillar content format
 
-## API (for the curious)
+Round = `{ id, title, zh, emoji, kind: 'list' | 'sentence', enabled, words: [{w, zh, e, say}], decoys: [...] }`. First word is the given start word; the rest must be eaten in order (max 12 words, 6 decoys). `say` overrides pronunciation. Settings: `showChinese`, `speechRate`, `hintAfter` (mistakes in a row before the right word glows), `idleHintSec`.
+
+## Shared hosting (PHP)
+
+Upload the **contents of `public/`** to the site root:
+
+```
+index.html  teacher-guide.html  api.php  .htaccess  data/.htaccess
+shark/  caterpillar/  admin/  shared/
+```
+
+PHP 7.4+ with `pdo_sqlite`; `data/` must be writable. **Never overwrite `data/game.db`** when updating — it holds results and the teacher's edited rounds. The schema migrates itself (old sessions become `game = 'shark'`). The frontend tries `api/ping` and falls back to `api.php/api/ping` when `mod_rewrite` is off.
+
+## API
 
 | Method | Route | Purpose |
 | --- | --- | --- |
-| POST | `/api/sessions` `{name}` | register a player / start a game |
+| POST | `/api/sessions` `{name, game?, detail?}` | register a player / start a run (`game` defaults to `shark`) |
 | POST | `/api/sessions/:id/mistake` `{word, chosen, correct}` | record a mistake |
-| POST | `/api/sessions/:id/finish` `{status, wordsDone, durationSec}` | finish a game |
-| GET | `/api/teacher/results?name=Shirley` | full report |
-| DELETE | `/api/teacher/results?name=Shirley` | clear results |
-| GET | `/api/questions` | active custom question set + game rules |
-| POST/PUT/DELETE | `/api/teacher/questions[/:id]?name=Shirley` | add / edit / delete custom questions (DELETE without id clears the set) |
-| POST | `/api/teacher/settings?name=Shirley` | save game rules (startGap, idleEnabled) |
+| POST | `/api/sessions/:id/finish` `{status: won\|eaten\|done, wordsDone, durationSec}` | finish a run |
+| GET | `/api/games/:game/config` | teacher-edited content of a game (`null` = built-in) |
+| PUT/DELETE | `/api/teacher/games/:game/config?name=…` | save / reset it |
+| GET | `/api/teacher/results?name=…&game=shark\|caterpillar\|all` | report (default `shark`) |
+| DELETE | `/api/teacher/results?name=…` | clear all results |
+| GET | `/api/questions` | shark: custom question set + rules |
+| POST/PUT/DELETE | `/api/teacher/questions[/:id]?name=…` | shark: manage questions |
+| POST | `/api/teacher/settings?name=…` | shark: game rules |

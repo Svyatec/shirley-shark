@@ -1,7 +1,7 @@
 'use strict';
 
 /*
- * Shirley & the Shark — classroom server.
+ * Shirley's English Games — classroom server (shark, caterpillar, ...).
  * Zero dependencies: Node 22.13+ (built-in node:sqlite).
  *
  *   node server.js            → http://localhost:3000 (+ LAN addresses)
@@ -57,36 +57,49 @@ db.exec(`
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS game_configs (
+    game       TEXT PRIMARY KEY,
+    config     TEXT NOT NULL,                -- JSON, формат определяет сама игра
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `);
 
+// миграция: старые сессии принадлежат акуле
+const sessionCols = db.prepare('PRAGMA table_info(sessions)').all().map((c) => c.name);
+if (!sessionCols.includes('game')) db.exec(`ALTER TABLE sessions ADD COLUMN game TEXT NOT NULL DEFAULT 'shark'`);
+if (!sessionCols.includes('detail')) db.exec(`ALTER TABLE sessions ADD COLUMN detail TEXT NOT NULL DEFAULT ''`);
+
 const q = {
-  insertSession: db.prepare(`INSERT INTO sessions (name) VALUES (?)`),
+  insertSession: db.prepare(`INSERT INTO sessions (name, game, detail) VALUES (?, ?, ?)`),
   getSession: db.prepare(`SELECT * FROM sessions WHERE id = ?`),
   insertMistake: db.prepare(`INSERT INTO mistakes (session_id, word, chosen, correct) VALUES (?, ?, ?, ?)`),
   finishSession: db.prepare(`
     UPDATE sessions SET status = ?, words_done = ?, duration_sec = ?, finished_at = datetime('now')
     WHERE id = ? AND status = 'playing'`),
-  // отчёт учителя строится только по завершённым играм (won / eaten)
+  // отчёт учителя строится только по завершённым играм; game = 'all' — без фильтра
   listSessions: db.prepare(`
-    SELECT s.id, s.name, s.status, s.words_done, s.duration_sec, s.started_at, s.finished_at,
+    SELECT s.id, s.name, s.game, s.detail, s.status, s.words_done, s.duration_sec, s.started_at, s.finished_at,
            (SELECT COUNT(*) FROM mistakes m WHERE m.session_id = s.id) AS mistakes
-    FROM sessions s WHERE s.status != 'playing'
+    FROM sessions s WHERE s.status != 'playing' AND (? = 'all' OR s.game = ?)
     ORDER BY s.started_at DESC, s.id DESC LIMIT 500`),
   totals: db.prepare(`
     SELECT COUNT(*) AS games,
            COUNT(DISTINCT lower(name)) AS players,
            COALESCE(SUM(status = 'won'), 0) AS won,
            COALESCE(SUM(status = 'eaten'), 0) AS eaten,
-           (SELECT COUNT(*) FROM mistakes m JOIN sessions f ON f.id = m.session_id AND f.status != 'playing') AS mistakes
-    FROM sessions WHERE status != 'playing'`),
+           COALESCE(SUM(status = 'done'), 0) AS done,
+           (SELECT COUNT(*) FROM mistakes m JOIN sessions f ON f.id = m.session_id AND f.status != 'playing'
+             WHERE (? = 'all' OR f.game = ?)) AS mistakes
+    FROM sessions WHERE status != 'playing' AND (? = 'all' OR game = ?)`),
   topWords: db.prepare(`
-    SELECT m.word, m.correct, COUNT(*) AS count, COUNT(DISTINCT m.session_id) AS players
+    SELECT m.word, m.correct, f.game, COUNT(*) AS count, COUNT(DISTINCT m.session_id) AS players
     FROM mistakes m JOIN sessions f ON f.id = m.session_id AND f.status != 'playing'
-    GROUP BY m.word ORDER BY count DESC, m.word ASC LIMIT 2`),
+    WHERE (? = 'all' OR f.game = ?)
+    GROUP BY m.word, f.game ORDER BY count DESC, m.word ASC LIMIT 5`),
   topChoice: db.prepare(`
     SELECT m.chosen, COUNT(*) AS count
     FROM mistakes m JOIN sessions f ON f.id = m.session_id AND f.status != 'playing'
-    WHERE m.word = ? GROUP BY m.chosen ORDER BY count DESC LIMIT 1`),
+    WHERE m.word = ? AND f.game = ? GROUP BY m.chosen ORDER BY count DESC LIMIT 1`),
   clearMistakes: db.prepare(`DELETE FROM mistakes`),
   clearSessions: db.prepare(`DELETE FROM sessions`),
   listQuestions: db.prepare(`SELECT * FROM questions ORDER BY id`),
@@ -96,6 +109,9 @@ const q = {
   clearQuestions: db.prepare(`DELETE FROM questions`),
   allSettings: db.prepare(`SELECT key, value FROM settings`),
   setSetting: db.prepare(`REPLACE INTO settings (key, value) VALUES (?, ?)`),
+  getConfig: db.prepare(`SELECT config, updated_at FROM game_configs WHERE game = ?`),
+  setConfig: db.prepare(`REPLACE INTO game_configs (game, config, updated_at) VALUES (?, ?, datetime('now'))`),
+  deleteConfig: db.prepare(`DELETE FROM game_configs WHERE game = ?`),
 };
 
 /* ---------------- helpers ---------------- */
@@ -105,6 +121,7 @@ const MIME = {
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon',
+  '.webp': 'image/webp', '.mp3': 'audio/mpeg', '.woff2': 'font/woff2',
 };
 
 function send(res, status, body, headers = {}) {
@@ -143,6 +160,7 @@ function cleanName(raw) {
 }
 const isTeacher = (name) => !!name && name.trim().toLowerCase() === TEACHER_NAME;
 const cleanWord = (v) => String(v ?? '').trim().slice(0, 60);
+const cleanGame = (v) => (/^[a-z0-9_-]{1,30}$/.test(String(v ?? '')) ? String(v) : null);
 
 // имя приходит в заголовке URL-энкоженным (кириллица не проходит в raw-заголовках)
 function headerName(req) {
@@ -180,9 +198,20 @@ function validateQuestion(b) {
 }
 
 function serveStatic(req, res, urlPath) {
-  const rel = urlPath === '/' ? '/index.html' : urlPath;
+  let rel;
+  try { rel = decodeURIComponent(urlPath); } catch { return fail(res, 400, 'Bad path'); }
   const file = path.normalize(path.join(PUBLIC_DIR, rel));
   if (!file.startsWith(PUBLIC_DIR)) return fail(res, 403, 'Forbidden');
+  fs.stat(file, (e, st) => {
+    if (!e && st.isDirectory()) {
+      // /shark -> /shark/ (иначе относительные пути страницы ломаются), каталог -> index.html
+      if (!urlPath.endsWith('/')) { res.writeHead(301, { Location: urlPath + '/' }); return res.end(); }
+      return sendFile(res, path.join(file, 'index.html'));
+    }
+    sendFile(res, file);
+  });
+}
+function sendFile(res, file) {
   fs.readFile(file, (err, data) => {
     if (err) return fail(res, 404, 'Not found');
     res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
@@ -190,13 +219,13 @@ function serveStatic(req, res, urlPath) {
   });
 }
 
-function teacherReport() {
-  const totals = q.totals.get();
-  const top = q.topWords.all().map((row) => ({
+function teacherReport(game) {
+  const totals = q.totals.get(game, game, game, game);
+  const top = q.topWords.all(game, game).map((row) => ({
     ...row,
-    typicalWrong: q.topChoice.get(row.word)?.chosen ?? null,
+    typicalWrong: q.topChoice.get(row.word, row.game)?.chosen ?? null,
   }));
-  return { totals, topMistakes: top, sessions: q.listSessions.all(), teacherName: TEACHER_NAME };
+  return { totals, topMistakes: top, sessions: q.listSessions.all(game, game), teacherName: TEACHER_NAME, game };
 }
 
 /* ---------------- routes ---------------- */
@@ -213,7 +242,9 @@ async function handleApi(req, res, url) {
     const name = cleanName(body.name);
     if (!name) return fail(res, 400, 'Name must be 1–30 characters');
     if (isTeacher(name)) return ok(res, { role: 'teacher', name, sessionId: null });
-    const { lastInsertRowid } = q.insertSession.run(name);
+    const game = cleanGame(body.game) || 'shark';
+    const detail = String(body.detail ?? '').trim().slice(0, 80);
+    const { lastInsertRowid } = q.insertSession.run(name, game, detail);
     return ok(res, { role: 'student', name, sessionId: Number(lastInsertRowid) });
   }
 
@@ -235,8 +266,8 @@ async function handleApi(req, res, url) {
     const id = Number(m[1]);
     if (!q.getSession.get(id)) return fail(res, 404, 'Session not found');
     const body = await readJson(req);
-    const status = body.status === 'won' ? 'won' : body.status === 'eaten' ? 'eaten' : null;
-    if (!status) return fail(res, 400, 'status must be won or eaten');
+    const status = ['won', 'eaten', 'done'].includes(body.status) ? body.status : null;
+    if (!status) return fail(res, 400, 'status must be won, eaten or done');
     const wordsDone = Math.max(0, Math.min(99, Number(body.wordsDone) || 0));
     const durationSec = Math.max(0, Math.min(86400, Math.round(Number(body.durationSec) || 0)));
     q.finishSession.run(status, wordsDone, durationSec, id);
@@ -269,6 +300,28 @@ async function handleApi(req, res, url) {
     if (method === 'DELETE') { q.clearQuestions.run(); return ok(res, { cleared: true }); }
   }
 
+  // GET /api/games/:game/config → настройки игры, сохранённые учителем (public: игре они нужны для старта)
+  m = pathname.match(/^\/api\/games\/([a-z0-9_-]{1,30})\/config$/);
+  if (m && method === 'GET') {
+    const row = q.getConfig.get(m[1]);
+    return ok(res, { config: row ? JSON.parse(row.config) : null, updatedAt: row ? row.updated_at : null });
+  }
+
+  // Teacher: save / reset a game's config
+  m = pathname.match(/^\/api\/teacher\/games\/([a-z0-9_-]{1,30})\/config$/);
+  if (m) {
+    if (!isTeacher(teacherFrom(req, url))) return fail(res, 403, 'Teacher access only');
+    if (method === 'PUT') {
+      const body = await readJson(req, 128 * 1024);
+      if (!body || typeof body.config !== 'object' || body.config === null || Array.isArray(body.config)) {
+        return fail(res, 400, 'config must be an object');
+      }
+      q.setConfig.run(m[1], JSON.stringify(body.config));
+      return ok(res, { saved: true });
+    }
+    if (method === 'DELETE') { q.deleteConfig.run(m[1]); return ok(res, { cleared: true }); }
+  }
+
   // Teacher: game rules
   if (pathname === '/api/teacher/settings' && method === 'POST') {
     if (!isTeacher(teacherFrom(req, url))) return fail(res, 403, 'Teacher access only');
@@ -282,7 +335,7 @@ async function handleApi(req, res, url) {
   if (pathname === '/api/teacher/results') {
     const name = teacherFrom(req, url);
     if (!isTeacher(name)) return fail(res, 403, 'Teacher access only');
-    if (method === 'GET') return ok(res, teacherReport());
+    if (method === 'GET') return ok(res, teacherReport(cleanGame(url.searchParams.get('game')) || 'shark'));
     if (method === 'DELETE') {
       db.exec('BEGIN');
       try { q.clearMistakes.run(); q.clearSessions.run(); db.exec('COMMIT'); }
@@ -314,7 +367,7 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, '0.0.0.0', () => {
   const lan = Object.values(os.networkInterfaces()).flat()
     .filter((i) => i && i.family === 'IPv4' && !i.internal).map((i) => i.address);
-  console.log(`🦈 Shirley & the Shark is running:`);
+  console.log(`🎮 Shirley's English Games is running:`);
   console.log(`   local:   http://localhost:${PORT}`);
   lan.forEach((ip) => console.log(`   network: http://${ip}:${PORT}`));
   console.log(`   teacher name: "${process.env.TEACHER_NAME || 'Shirley'}"  •  db: data/game.db`);
