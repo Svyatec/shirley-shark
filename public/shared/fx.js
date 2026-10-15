@@ -192,7 +192,7 @@
         if (it.x < r.x - 20) it.x = r.x + r.w + 10; if (it.x > r.x + r.w + 20) it.x = r.x - 10;
         if (it.y < r.y - 20) it.y = r.y + r.h + 10; if (it.y > r.y + r.h + 20) it.y = r.y - 10;
         var tw = kind === 'stars' ? 0.35 + 0.65 * Math.abs(Math.sin(now * 1.6 + it.ph)) : 0.4 + 0.6 * Math.abs(Math.sin(now * 1.3 * it.sp + it.ph));
-        var rad = it.sz * (kind === 'bubbles' ? 3 : 4);
+        var rad = it.sz * (kind === 'bubbles' ? 3 : kind === 'stars' ? 1.6 : 4);
         var g = c.createRadialGradient(it.x, it.y, 0, it.x, it.y, rad * 2.4);
         g.addColorStop(0, col); g.addColorStop(0.35, col.replace('#', '#') + '88'); g.addColorStop(1, 'rgba(255,255,255,0)');
         c.globalAlpha = tw * 0.85; c.fillStyle = g; c.beginPath(); c.arc(it.x, it.y, rad * 2.4, 0, 7); c.fill();

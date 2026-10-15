@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bubble Spell 泡泡拼单词</title>
+<link rel="stylesheet" href="../shared/base.css">
+<link rel="stylesheet" href="../shared/kit.css">
+<style>
+  body{background:#0A3D6B; overflow:hidden}
+  .kgame.g-spell{background:linear-gradient(180deg,#38B6E8 0%,#1C86C9 30%,#0F5E9E 64%,#0A3D6B 100%)}
+
+  /* лучи света сверху */
+  .rays{position:absolute; inset:0 0 30% 0; pointer-events:none; opacity:.55; mix-blend-mode:screen;
+    background:repeating-linear-gradient(100deg, rgba(255,255,255,0) 0 40px, rgba(220,250,255,.22) 40px 70px, rgba(255,255,255,0) 70px 130px);
+    -webkit-mask-image:linear-gradient(180deg,#000,transparent); mask-image:linear-gradient(180deg,#000,transparent);
+    animation:rays 14s ease-in-out infinite alternate}
+  @keyframes rays{to{transform:translateX(-60px) skewX(-4deg)}}
+  .surface{position:absolute; left:0; right:0; top:0; height:26px; pointer-events:none; opacity:.5;
+    background:radial-gradient(ellipse 40px 10px at 20px 0,rgba(255,255,255,.7),transparent 70%) 0 0/80px 26px repeat-x; animation:surf 6s linear infinite}
+  @keyframes surf{to{background-position:80px 0}}
+  .sand{position:absolute; left:0; right:0; bottom:0; height:16%; pointer-events:none; z-index:3}
+  .sand svg{width:100%; height:100%; display:block}
+  .weed{position:absolute; bottom:6%; width:44px; pointer-events:none; z-index:2; transform-origin:50% 100%; animation:weed 3.6s ease-in-out infinite}
+  .weed svg{width:100%; height:100%; overflow:visible}
+  @keyframes weed{50%{transform:skewX(6deg) rotate(2deg)}}
+
+  /* фоновые рыбки-друзья */
+  .fishy{position:absolute; z-index:1; width:56px; pointer-events:none; opacity:.95}
+  .fishy svg{width:100%; overflow:visible}
+  .fishy .tail{transform-origin:24% 50%; transform-box:fill-box; animation:tail .35s ease-in-out infinite alternate}
+  @keyframes tail{to{transform:scaleY(.6) rotate(8deg)}}
+
+  /* подсказка: картинка + слоты */
+  .card{
+    position:absolute; z-index:10; left:50%; top:10px; transform:translateX(-50%); width:min(92%,520px);
+    background:rgba(255,255,255,.93); border:4px solid #fff; border-radius:30px; padding:10px 14px 14px; text-align:center;
+    box-shadow:0 6px 0 rgba(4,40,70,.35), 0 0 40px rgba(160,230,255,.45), inset 0 -5px 0 rgba(43,42,76,.06);
+  }
+  .card.pop{animation:cpop .55s cubic-bezier(.3,1.6,.5,1)}
+  @keyframes cpop{0%{transform:translateX(-50%) scale(.5); opacity:0}}
+  .card .pic{font-size:clamp(44px,12vw,68px); line-height:1.05}
+  .card .zhtxt{font-size:16px; font-weight:900; color:#2B2A4C}
+  .card .ear{position:absolute; right:-12px; top:-12px; width:46px; height:46px; border-radius:50%; border:3px solid #fff; background:#FF8A3D; color:#fff; font-size:20px; box-shadow:0 4px 0 #C8621D; cursor:pointer}
+  .slots{display:flex; justify-content:center; gap:6px; margin-top:8px; flex-wrap:nowrap}
+  .slot{
+    width:var(--S); height:calc(var(--S) * 1.15); border-radius:12px; border:3px dashed #9FD3EE; background:#EAF7FF;
+    display:flex; align-items:center; justify-content:center; font-weight:900; font-size:calc(var(--S) * .62); color:#fff; line-height:1;
+  }
+  .slot.space{border:0; background:none; width:calc(var(--S) * .4)}
+  .slot.on{border:0; background:linear-gradient(180deg,#5BC8F5,#2C93D8); box-shadow:0 4px 0 #1C6FA8, inset 0 -4px 0 rgba(0,0,0,.12); animation:slotin .45s cubic-bezier(.3,1.7,.5,1); text-shadow:0 2px 0 rgba(0,0,0,.2)}
+  .slot.next{border-color:#FFC93C; background:#FFF8DC; animation:nextp 1.1s ease-in-out infinite}
+  @keyframes slotin{0%{transform:scale(.3)} 100%{transform:scale(1)}}
+  @keyframes nextp{50%{transform:translateY(-3px)}}
+  .slots.win .slot{animation:wave .6s ease-in-out}
+  @keyframes wave{40%{transform:translateY(-14px) scale(1.12)}}
+
+  /* пузыри с буквами */
+  .bub{
+    position:absolute; z-index:6; left:0; top:0; border:0; padding:0; cursor:pointer; border-radius:50%; font-family:inherit;
+    width:var(--B); height:var(--B); color:#fff; font-weight:900; font-size:calc(var(--B) * .5); line-height:1;
+    background:radial-gradient(circle at 32% 28%, rgba(255,255,255,.95) 0 9%, rgba(255,255,255,.25) 10% 22%, rgba(140,215,255,.25) 45%, rgba(90,190,255,.55) 78%, rgba(255,255,255,.85) 100%);
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.75), inset -6px -8px 16px rgba(60,140,220,.35), 0 8px 20px rgba(0,40,80,.25);
+    text-shadow:0 2px 0 rgba(0,60,120,.45), 0 0 10px rgba(0,80,160,.35); will-change:transform;
+  }
+  .bub span{display:block; animation:jelly 2.6s ease-in-out infinite; animation-delay:var(--d,0s)}
+  @keyframes jelly{50%{transform:scale(1.06,.94)}}
+  .bub.nope span{animation:bnope .5s}
+  @keyframes bnope{25%{transform:translateX(-7px) rotate(-12deg)} 50%{transform:translateX(7px) rotate(12deg)} 75%{transform:translateX(-4px)}}
+  .bub.hint{box-shadow:inset 0 0 0 3px #FFE066, 0 0 0 6px rgba(255,224,102,.45), 0 0 26px rgba(255,224,102,.9)}
+
+  /* осьминог и сундук */
+  .octo{position:absolute; z-index:5; right:2%; bottom:5%; width:clamp(90px,24vw,140px); pointer-events:none}
+  .octo svg{width:100%; overflow:visible}
+  .octo .arm{transform-origin:50% 0; transform-box:fill-box; animation:arm 2.2s ease-in-out infinite alternate}
+  .octo .arm:nth-child(2n){animation-delay:-1.1s}
+  @keyframes arm{to{transform:rotate(9deg)}}
+  .octo .bodyg{animation:obob 2.6s ease-in-out infinite; transform-origin:50% 100%; transform-box:fill-box}
+  @keyframes obob{50%{transform:translateY(-6px) scale(1.02,.98)}}
+  .octo.dance{animation:odance .45s ease-in-out infinite alternate}
+  @keyframes odance{from{transform:rotate(-8deg) translateY(0)} to{transform:rotate(8deg) translateY(-18px)}}
+  .chest{position:absolute; z-index:4; left:3%; bottom:5%; width:clamp(84px,22vw,124px); pointer-events:none}
+  .chest svg{width:100%; overflow:visible}
+  .chest .lid{transform-origin:12% 62%; transform-box:view-box; transition:transform .9s cubic-bezier(.3,1.6,.5,1)}
+  .chest.open .lid{transform:rotate(-38deg)}
+  .chest .glow{opacity:0; transition:opacity .6s}
+  .chest.open .glow{opacity:1}
+  @media (prefers-reduced-motion:reduce){ .rays,.weed,.bub span,.octo .arm{animation:none} }
+</style>
+</head>
+<body>
+<script src="../shared/core.js" data-root="../"></script>
+<script src="../shared/fx.js"></script>
+<script src="../shared/kit.js"></script>
+<script src="defaults.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

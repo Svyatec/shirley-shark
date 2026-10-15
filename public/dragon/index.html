@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dragon Eggs 龙蛋配对</title>
+<link rel="stylesheet" href="../shared/base.css">
+<link rel="stylesheet" href="../shared/kit.css">
+<style>
+  body{background:#3B1F5E; overflow:hidden}
+  .kgame.g-dragon{background:linear-gradient(180deg,#2E1A5C 0%,#6B2E7A 34%,#D85A6E 66%,#FFB45E 100%)}
+
+  .mount{position:absolute; left:0; right:0; bottom:0; height:46%; pointer-events:none}
+  .mount svg{width:100%; height:100%; display:block}
+  .lava{animation:lava 3s ease-in-out infinite}
+  @keyframes lava{50%{opacity:.55}}
+  .crystal{position:absolute; width:22px; pointer-events:none; animation:cfloat 5s ease-in-out infinite; filter:drop-shadow(0 0 10px rgba(180,240,255,.8))}
+  @keyframes cfloat{50%{transform:translateY(-14px) rotate(8deg)}}
+
+  /* жёрдочка для дракончиков */
+  .perch{position:absolute; z-index:6; left:4%; right:4%; top:10px; height:62px; border-radius:40px;
+    background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.06)); border:2px solid rgba(255,255,255,.22);
+    display:flex; align-items:flex-end; justify-content:center; gap:4px; padding:0 10px 6px; backdrop-filter:blur(2px)}
+  .perch::after{content:""; position:absolute; left:16px; right:16px; bottom:8px; height:8px; border-radius:6px; background:linear-gradient(90deg,#8A5A2C,#B07A40,#8A5A2C); z-index:-1}
+  .perch .slot{width:44px; height:44px; flex:0 0 auto}
+  .perch .slot svg{width:100%; height:100%; overflow:visible}
+  .perch .slot .d{animation:perchbob 1.6s ease-in-out infinite}
+  @keyframes perchbob{50%{transform:translateY(-4px)}}
+
+  /* яйца */
+  .grid{position:absolute; z-index:5; left:0; right:0; display:grid; justify-content:center; align-content:center; gap:var(--gap)}
+  .egg{position:relative; width:var(--E); height:calc(var(--E) * 1.18); border:0; background:none; padding:0; cursor:pointer; font-family:inherit; perspective:700px;
+    animation:eggin .6s cubic-bezier(.3,1.5,.5,1) backwards}
+  @keyframes eggin{0%{transform:translateY(40px) scale(.2); opacity:0}}
+  .egg .flip{position:absolute; inset:0; transform-style:preserve-3d; transition:transform .5s cubic-bezier(.4,1.4,.5,1)}
+  .egg.open .flip,.egg.done .flip{transform:rotateY(180deg)}
+  .egg .face{position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden; display:flex; align-items:center; justify-content:center}
+  .egg .front svg,.egg .back svg.shell{position:absolute; inset:0; width:100%; height:100%; overflow:visible}
+  .egg .front{filter:drop-shadow(0 8px 4px rgba(40,10,40,.35))}
+  .egg:not(.open):not(.done) .front{animation:wob 3.4s ease-in-out infinite; animation-delay:var(--d,0s); transform-origin:50% 90%}
+  @keyframes wob{0%,86%,100%{transform:rotate(0)} 90%{transform:rotate(-5deg)} 94%{transform:rotate(5deg)}}
+  .egg .back{transform:rotateY(180deg)}
+  .egg .back .content{position:relative; z-index:2; text-align:center; line-height:1.05; margin-top:18%}
+  .egg .back .pic{font-size:calc(var(--E) * .46)}
+  .egg .back .word{font-weight:900; color:#5A2A6A; font-size:var(--fs,18px); padding:0 8%; word-break:keep-all; text-shadow:0 2px 0 #fff}
+  .egg .back .zz{font-size:11px; font-weight:800; color:#7A5A8A}
+  .egg.nope .flip{animation:nope .5s}
+  @keyframes nope{25%{transform:rotateY(180deg) rotate(-7deg)} 50%{transform:rotateY(180deg) rotate(7deg)} 75%{transform:rotateY(180deg) rotate(-3deg)}}
+  .egg.hint .front{animation:hintg .7s ease-in-out infinite; filter:drop-shadow(0 0 14px rgba(255,230,120,1))}
+  @keyframes hintg{50%{transform:scale(1.1)}}
+  .egg.done{pointer-events:none}
+  .egg.done .back{opacity:.35; transition:opacity .6s .6s}
+  .egg:focus-visible{outline:3px solid #FFE066; outline-offset:4px; border-radius:40%}
+
+  .baby{position:absolute; z-index:20; pointer-events:none; will-change:transform}
+  .baby svg{width:100%; height:100%; overflow:visible}
+  .wingL,.wingR{transform-box:fill-box; animation:flapw .18s ease-in-out infinite alternate}
+  .wingL{transform-origin:100% 80%} .wingR{transform-origin:0 80%}
+  @keyframes flapw{to{transform:rotate(-24deg) scaleY(.8)}}
+  .wingR{animation-name:flapr} @keyframes flapr{to{transform:rotate(24deg) scaleY(.8)}}
+  .still .wingL,.still .wingR{animation:none}
+  @media (prefers-reduced-motion:reduce){ .egg .front,.crystal,.lava{animation:none!important} }
+</style>
+</head>
+<body>
+<script src="../shared/core.js" data-root="../"></script>
+<script src="../shared/fx.js"></script>
+<script src="../shared/kit.js"></script>
+<script src="defaults.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
