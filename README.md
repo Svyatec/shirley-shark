@@ -5,6 +5,10 @@ Classroom English mini-games with one teacher back office. Node + SQLite (zero d
 | Game | Path | For | Idea |
 | --- | --- | --- | --- |
 | 🐛 Hungry Caterpillar | `/caterpillar/` | young / beginner (Chinese kids) | Eat the words **in the right order**; no losing. The caterpillar grows, turns into a butterfly, says "Thank you!" and flies away. Butterflies are collected in an album. |
+| 🐸 Lily Hop | `/frog/` | beginners | Picture (emoji / Chinese) → hop to the lily pad with the right word; moonlit pond, golden crown. |
+| 🐝 Bee Garden | `/bee/` | beginners | Listening: hear the word, fly the bee to the right flower; honey jar, rainbow finale. |
+| 🫧 Bubble Spell | `/spell/` | beginners | Spelling: pop letter bubbles in order; a new fish per word, treasure chest finale. |
+| 🐉 Dragon Eggs | `/dragon/` | beginners | Memory pairs word ↔ picture; each pair hatches a baby dragon, Mama Dragon finale. |
 | 🦈 Shirley & the Shark | `/shark/` | B1 | Quiz + grammar; mistakes bring the shark closer. |
 
 `/` is the game menu, `/admin/` is the teacher back office (Chinese UI), `/teacher-guide.html` is the teacher's manual in Chinese (also shown inside the back office, tab 📖).
@@ -26,9 +30,12 @@ public/
   index.html              game menu
   shark/                  Shirley & the Shark (own question builder inside the game)
   caterpillar/            index.html + game.js + defaults.js (built-in rounds, also used by the admin)
+  frog/ bee/ spell/ dragon/  same layout, built on shared/kit.js (shell: name, menu, rewards album, end card)
   admin/index.html        back office: results of all games, caterpillar editor, link to shark builder, guide viewer
   teacher-guide.html      Chinese manual (print-friendly)
   shared/core.js,base.css API detection, speech (browser SpeechSynthesis), sounds, base styles
+  shared/fx.js            canvas particle engine: confetti, sparks, stars, hearts, bubbles, fireworks, ambient fireflies
+  shared/kit.js,kit.css   game shell for new games: play(round, api) gets stage, progress, speak, mistake, idle hints, complete
   api.php  .htaccess  data/   PHP backend for shared hosting
 server.js                 Node backend (same routes as api.php)
 ```
@@ -37,10 +44,10 @@ No external fonts / CDNs anywhere (they are often blocked in mainland China).
 
 ## Adding a new game
 
-1. Create `public/<game>/index.html`, include `../shared/core.js` (`data-root="../"`).
-2. Start a run with `Games.startSession(name, '<game>', detail)`, report `Games.reportMistake(word, chosen, correct)`, finish with `Games.finishSession('done', words, seconds)`.
+1. Create `public/<game>/index.html` with `../shared/core.js` (`data-root="../"`), `fx.js`, `kit.js`, `kit.css`, then `Games.kit.create({ id, title, zh, emoji, defaults, reward, play })` — see `public/frog/game.js`.
+2. Without the kit: start a run with `Games.startSession(name, '<game>', detail)`, report `Games.reportMistake(word, chosen, correct)`, finish with `Games.finishSession('done', words, seconds)`.
 3. Store teacher-editable content with `GET /api/games/<game>/config` (game) and `PUT /api/teacher/games/<game>/config` (admin). The config is any JSON object.
-4. Add a tab with the editor in `public/admin/index.html`, a card in `public/index.html`, a chapter in `public/teacher-guide.html`.
+4. Add an entry to `EDITORS` in `public/admin/index.html` (the editor tab is generated), a card in `public/index.html`, a chapter in `public/teacher-guide.html`.
 
 ## Caterpillar content format
 
@@ -52,7 +59,7 @@ Upload the **contents of `public/`** to the site root:
 
 ```
 index.html  teacher-guide.html  api.php  .htaccess  data/.htaccess
-shark/  caterpillar/  admin/  shared/
+shark/  caterpillar/  frog/  bee/  spell/  dragon/  admin/  shared/
 ```
 
 PHP 7.4+ with `pdo_sqlite`; `data/` must be writable. **Never overwrite `data/game.db`** when updating — it holds results and the teacher's edited rounds. The schema migrates itself (old sessions become `game = 'shark'`). The frontend tries `api/ping` and falls back to `api.php/api/ping` when `mod_rewrite` is off.

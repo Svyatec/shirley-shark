@@ -107,8 +107,8 @@
     /* пузыри: свободное плавание + мягкое отталкивание */
     var areaTop = 0, areaBot = H * 0.8, BS = 60;
     function measureArea() {
-      var cr = card.getBoundingClientRect(), sr = stage.getBoundingClientRect();
-      areaTop = cr.bottom - sr.top + 12; areaBot = H * 0.8;
+      // offsetTop/offsetHeight — без учёта анимации появления карточки (она в этот момент уменьшена)
+      areaTop = card.offsetTop + card.offsetHeight + 12; areaBot = H * 0.8;
       BS = clamp(Math.min(W * 0.17, (areaBot - areaTop) * 0.24), 50, 80);
     }
     function makeBubbles(letters) {

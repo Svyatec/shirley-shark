@@ -57,3 +57,9 @@ body.nozh .zhline{display:none}
   .kchip{padding:6px 10px; font-size:13px}
   .kchip.round{max-width:34vw}
 }
+@media (max-width:380px){
+  .khud{gap:5px; padding-left:6px; padding-right:6px}
+  .khud .icon-btn{height:34px; min-width:34px; padding:0 8px; font-size:15px}
+  .kchip{padding:5px 8px; font-size:12px}
+  .kchip.round{max-width:28vw}
+}

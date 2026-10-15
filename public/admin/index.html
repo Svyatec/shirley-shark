@@ -108,7 +108,6 @@
 
   <nav class="tabs" id="tabs">
     <button type="button" data-tab="results" class="on">📊 成绩<small>Results</small></button>
-    <button type="button" data-tab="cat">🐛 毛毛虫<small>Caterpillar</small></button>
     <button type="button" data-tab="shark">🦈 鲨鱼<small>Shark</small></button>
     <button type="button" data-tab="guide">📖 使用说明<small>Guide</small></button>
   </nav>
@@ -120,7 +119,6 @@
       <span class="spacer"></span>
       <select id="gameFilter" aria-label="Game">
         <option value="all">全部游戏 All games</option>
-        <option value="caterpillar">🐛 毛毛虫 Caterpillar</option>
         <option value="shark">🦈 鲨鱼 Shark</option>
       </select>
       <button class="ghost-btn" id="refreshBtn" type="button">🔄 刷新</button>
@@ -141,44 +139,7 @@
     </div>
   </section>
 
-  <!-- Редактор гусеницы -->
-  <section class="panel" id="tab-cat" hidden>
-    <div class="row">
-      <h2 style="margin:0">🐛 毛毛虫游戏编辑 <small>Caterpillar editor</small></h2>
-      <span class="spacer"></span>
-      <a class="ghost-btn" href="../caterpillar/" target="_blank" rel="noopener" style="text-decoration:none">▶ 试玩 Test play</a>
-    </div>
-    <div class="warn" id="defaultsNote" hidden>现在显示的是默认题目。点击“保存”后，学生会使用你修改后的版本。<br><small>Showing the built-in rounds. Students get your version after you press Save.</small></div>
-
-    <h2>⚙️ 游戏设置 <small>Settings</small></h2>
-    <div class="row" style="gap:18px">
-      <label class="chk"><input type="checkbox" id="sShowZh"> 默认显示中文翻译 <small style="font-weight:700; color:var(--ink-soft)">Show Chinese by default</small></label>
-      <label class="f" style="margin:0">发音速度 Speech rate
-        <input class="in" type="number" id="sRate" min="0.4" max="1.3" step="0.05" style="width:90px"></label>
-      <label class="f" style="margin:0">错几次后提示 Hint after mistakes
-        <select id="sHintAfter"><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
-      <label class="f" style="margin:0">久不操作提示（秒，0=关）Idle hint sec
-        <input class="in" type="number" id="sIdle" min="0" max="120" step="1" style="width:90px"></label>
-    </div>
-
-    <h2>📚 题目（故事）<small>Rounds — each round = one caterpillar → one butterfly</small></h2>
-    <div class="editor">
-      <div>
-        <div class="rlist" id="rList"></div>
-        <div class="row" style="margin-top:10px">
-          <button class="ghost-btn" id="addRound" type="button">＋ 新增 Add</button>
-          <button class="ghost-btn" id="dupRound" type="button">⧉ 复制</button>
-        </div>
-      </div>
-      <div id="rEditor"></div>
-    </div>
-
-    <div class="bar">
-      <button class="big-btn green small" id="saveCat" type="button">💾 保存 Save</button>
-      <button class="ghost-btn danger" id="resetCat" type="button">↩ 恢复默认题目 Restore defaults</button>
-      <span class="status" id="catStatus"></span>
-    </div>
-  </section>
+  <div id="editorsAnchor" hidden></div>
 
   <!-- Акула -->
   <section class="panel" id="tab-shark" hidden>
@@ -207,6 +168,10 @@
 
 <script src="../shared/core.js" data-root="../"></script>
 <script src="../caterpillar/defaults.js"></script>
+<script src="../frog/defaults.js"></script>
+<script src="../bee/defaults.js"></script>
+<script src="../spell/defaults.js"></script>
+<script src="../dragon/defaults.js"></script>
 <script>
 (function(){
   'use strict';
@@ -254,7 +219,8 @@
   $('tabs').addEventListener('click', function(e){
     var b = e.target.closest('button[data-tab]'); if(!b) return;
     [].forEach.call($('tabs').children, function(x){ x.classList.toggle('on', x === b); });
-    ['results','cat','shark','guide'].forEach(function(t){ $('tab-' + t).hidden = (t !== b.dataset.tab); });
+    [].forEach.call(document.querySelectorAll('section.panel'), function(sct){ sct.hidden = sct.id !== 'tab-' + b.dataset.tab; });
+    if(editors[b.dataset.tab]) editors[b.dataset.tab].load();
     if(b.dataset.tab === 'guide' && !$('guideFrame').src) $('guideFrame').src = $('guideFrame').dataset.src;
     if(b.dataset.tab === 'results') loadResults();
   });
@@ -312,71 +278,28 @@
     G.api('api/teacher/results', 'DELETE').then(function(){ toast('已清空 ✓'); loadResults(); }).catch(function(e){ toast(e.message); });
   });
 
-  /* ---------- редактор гусеницы ---------- */
-  var cfg = null, sel = 0, dirty = false, usingDefaults = false;
-
-  function markDirty(on){
-    dirty = on;
-    var s = $('catStatus');
-    s.className = 'status' + (on ? ' dirty' : '');
-    s.textContent = on ? '● 有未保存的修改 Unsaved changes' : '';
-  }
-  window.addEventListener('beforeunload', function(e){ if(dirty){ e.preventDefault(); e.returnValue = ''; } });
-
-  function loadCat(){
-    return G.loadConfig('caterpillar').then(function(raw){
-      usingDefaults = !(raw && Array.isArray(raw.rounds) && raw.rounds.length);
-      cfg = clone(usingDefaults ? window.CATERPILLAR_DEFAULTS : raw);
-      cfg.settings = Object.assign({}, window.CATERPILLAR_DEFAULTS.settings, cfg.settings || {});
-      cfg.rounds.forEach(function(r){ r.words = r.words || []; r.decoys = r.decoys || []; r.kind = r.kind || 'list'; if(r.enabled == null) r.enabled = true; });
-      sel = 0;
-      $('defaultsNote').hidden = !usingDefaults;
-      $('sShowZh').checked = cfg.settings.showChinese !== false;
-      $('sRate').value = cfg.settings.speechRate;
-      $('sHintAfter').value = String(cfg.settings.hintAfter);
-      $('sIdle').value = cfg.settings.idleHintSec;
-      markDirty(false);
-      renderList(); renderEditor();
-    });
-  }
-  $('sShowZh').addEventListener('change', function(){ cfg.settings.showChinese = this.checked; markDirty(true); });
-  $('sRate').addEventListener('input', function(){ cfg.settings.speechRate = Math.min(1.3, Math.max(0.4, Number(this.value) || 0.85)); markDirty(true); });
-  $('sHintAfter').addEventListener('change', function(){ cfg.settings.hintAfter = Number(this.value); markDirty(true); });
-  $('sIdle').addEventListener('input', function(){ cfg.settings.idleHintSec = Math.max(0, Number(this.value) || 0); markDirty(true); });
-
-  function renderList(){
-    var l = $('rList'); l.innerHTML = '';
-    cfg.rounds.forEach(function(r, i){
-      var b = el('button', 'ritem' + (i === sel ? ' on' : '') + (r.enabled ? '' : ' off')); b.type = 'button';
-      b.appendChild(el('span', 'em', r.emoji || '🐛'));
-      var t = el('span', 't'); t.appendChild(el('b', '', r.title || '(无标题)'));
-      t.appendChild(el('small', '', r.words.length + ' 词' + (r.enabled ? '' : ' · 已隐藏')));
-      b.appendChild(t);
-      var up = el('span', '', '▲'), dn = el('span', '', '▼');
-      [[up, -1], [dn, 1]].forEach(function(p){
-        p[0].style.cssText = 'padding:2px 6px; cursor:pointer; color:var(--ink-soft)';
-        p[0].title = p[1] < 0 ? '上移' : '下移';
-        p[0].addEventListener('click', function(ev){ ev.stopPropagation(); move(i, p[1]); });
-        b.appendChild(p[0]);
-      });
-      b.addEventListener('click', function(){ sel = i; renderList(); renderEditor(); });
-      l.appendChild(b);
-    });
-  }
-  function move(i, d){
-    var j = i + d; if(j < 0 || j >= cfg.rounds.length) return;
-    var t = cfg.rounds[i]; cfg.rounds[i] = cfg.rounds[j]; cfg.rounds[j] = t;
-    sel = j; markDirty(true); renderList();
-  }
-  $('addRound').addEventListener('click', function(){
-    cfg.rounds.push({ id: 'r' + Date.now().toString(36), title: 'New story', zh: '', emoji: '🐛', kind: 'list', enabled: true,
-      words: [{ w: 'one', zh: '一', e: '1️⃣', say: '' }, { w: 'two', zh: '二', e: '2️⃣', say: '' }, { w: 'three', zh: '三', e: '3️⃣', say: '' }], decoys: [] });
-    sel = cfg.rounds.length - 1; markDirty(true); renderList(); renderEditor();
-  });
-  $('dupRound').addEventListener('click', function(){
-    var c = clone(cfg.rounds[sel]); c.id = 'r' + Date.now().toString(36); c.title += ' (copy)';
-    cfg.rounds.splice(sel + 1, 0, c); sel++; markDirty(true); renderList(); renderEditor();
-  });
+  /* ---------- редакторы игр (одинаковый формат «истории + слова») ---------- */
+  var EDITORS = [
+    { key: 'caterpillar', icon: '🐛', zh: '毛毛虫', en: 'Caterpillar', defaults: window.CATERPILLAR_DEFAULTS, url: '../caterpillar/',
+      unit: '每个故事 = 一只毛毛虫 → 一只蝴蝶', min: 2, kind: true, decoys: true, order: true,
+      help: '<b>第一行是起始词</b>，毛毛虫从它开始，孩子要按顺序找出其余的词。最多 12 个词。' },
+    { key: 'frog', icon: '🐸', zh: '青蛙过河', en: 'Lily Hop', defaults: window.FROG_DEFAULTS, url: '../frog/',
+      unit: '每个故事 = 过一次池塘 → 一顶金皇冠', min: 3, kind: false, decoys: true,
+      help: '每个词出一道题：孩子看<b>表情图片</b>（没有图片时看中文），跳到写着这个英文词的荷叶上。请尽量给每个词加表情。干扰词会出现在荷叶上。至少 3 个词。' },
+    { key: 'bee', icon: '🐝', zh: '小蜜蜂', en: 'Bee Garden', defaults: window.BEE_DEFAULTS, url: '../bee/',
+      unit: '每个故事 = 一罐蜂蜜', min: 3, kind: false, decoys: true,
+      help: '听力练习：电脑读出一个词，孩子找到写着这个词的花。读音不对时在第 4 项写读音。干扰词会长成额外的花。至少 3 个词。',
+      extra: [{ key: 'flowers', label: '每题几朵花 Flowers per question', min: 3, max: 6, def: 4 }] },
+    { key: 'spell', icon: '🫧', zh: '泡泡拼单词', en: 'Bubble Spell', defaults: window.SPELL_DEFAULTS, url: '../spell/',
+      unit: '每个故事 = 一颗珍珠', min: 1, kind: false, decoys: false,
+      help: '拼写练习：孩子看图片、听读音，按顺序点字母泡泡拼出单词。适合 3～8 个字母的短词；空格和符号会自动填好。',
+      extra: [{ key: 'extraLetters', label: '多余的字母 Extra letters', min: 0, max: 4, def: 2 }] },
+    { key: 'dragon', icon: '🐉', zh: '龙蛋配对', en: 'Dragon Eggs', defaults: window.DRAGON_DEFAULTS, url: '../dragon/',
+      unit: '每个故事 = 一颗金龙蛋', min: 2, kind: false, decoys: false,
+      help: '记忆配对：一半蛋里是英文词，另一半是它的<b>表情图片</b>（没有图片时是中文）。每个词都要有表情或中文。每局随机选几对。',
+      extra: [{ key: 'pairs', label: '每局几对 Pairs per game', min: 2, max: 8, def: 6 }] }
+  ];
+  EDITORS.forEach(function(d){ GAMES[d.key] = d.icon + ' ' + d.zh; });
 
   function toLine(w){
     var parts = [w.w, w.zh || '', w.e || '', w.say || ''];
@@ -389,126 +312,247 @@
       return p[0] ? { w: p[0].slice(0, 40), zh: (p[1] || '').slice(0, 40), e: (p[2] || '').slice(0, 8), say: (p[3] || '').slice(0, 60) } : null;
     }).filter(Boolean);
   }
-  function speakRate(){ return cfg.settings.speechRate; }
 
-  function renderEditor(){
-    var box = $('rEditor'); box.innerHTML = '';
-    var r = cfg.rounds[sel];
-    if(!r){ box.appendChild(el('div', 'empty', '没有题目。点击“新增”。')); return; }
+  var dirtyEditors = {};
+  window.addEventListener('beforeunload', function(e){
+    if(Object.keys(dirtyEditors).some(function(k){ return dirtyEditors[k]; })){ e.preventDefault(); e.returnValue = ''; }
+  });
 
-    function field(label, sub, input){
-      var l = el('label', 'f'); l.appendChild(document.createTextNode(label));
-      if(sub){ l.appendChild(el('small', '', ' ' + sub)); }
-      l.appendChild(input); return l;
+  function makeEditor(def){
+    var sec = el('section', 'panel'); sec.id = 'tab-' + def.key; sec.hidden = true;
+    var extraHtml = (def.extra || []).map(function(x){
+      return '<label class="f" style="margin:0">' + x.label + ' <input class="in" type="number" data-extra="' + x.key + '" min="' + x.min + '" max="' + x.max + '" step="1" style="width:80px"></label>';
+    }).join('');
+    sec.innerHTML =
+      '<div class="row"><h2 style="margin:0">' + def.icon + ' ' + def.zh + ' <small>' + def.en + ' editor</small></h2><span class="spacer"></span>' +
+      '<a class="ghost-btn" href="' + def.url + '" target="_blank" rel="noopener" style="text-decoration:none">▶ 试玩 Test play</a></div>' +
+      '<div class="warn" data-k="defNote" hidden>现在显示的是默认题目。点击“保存”后，学生会使用你修改后的版本。<br><small>Showing the built-in rounds. Students get your version after you press Save.</small></div>' +
+      '<h2>⚙️ 游戏设置 <small>Settings</small></h2><div class="row" style="gap:18px">' +
+        '<label class="chk"><input type="checkbox" data-k="zh"> 默认显示中文翻译 <small style="font-weight:700; color:var(--ink-soft)">Show Chinese by default</small></label>' +
+        '<label class="f" style="margin:0">发音速度 Speech rate <input class="in" type="number" data-k="rate" min="0.4" max="1.3" step="0.05" style="width:90px"></label>' +
+        '<label class="f" style="margin:0">错几次后提示 Hint after mistakes <select data-k="hint"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>' +
+        '<label class="f" style="margin:0">久不操作提示（秒，0=关）Idle hint sec <input class="in" type="number" data-k="idle" min="0" max="120" step="1" style="width:90px"></label>' +
+        extraHtml + '</div>' +
+      '<h2>📚 题目（故事）<small>' + def.unit + '</small></h2>' +
+      '<div class="editor"><div><div class="rlist" data-k="list"></div><div class="row" style="margin-top:10px">' +
+        '<button class="ghost-btn" data-k="add" type="button">＋ 新增 Add</button><button class="ghost-btn" data-k="dup" type="button">⧉ 复制</button></div></div>' +
+        '<div data-k="ed"></div></div>' +
+      '<div class="bar"><button class="big-btn green small" data-k="save" type="button">💾 保存 Save</button>' +
+        '<button class="ghost-btn danger" data-k="reset" type="button">↩ 恢复默认题目 Restore defaults</button><span class="status" data-k="status"></span></div>';
+    var q = function(k){ return sec.querySelector('[data-k="' + k + '"]'); };
+    var cfg = null, sel = 0, loaded = false;
+
+    function markDirty(on){
+      dirtyEditors[def.key] = on;
+      var s = q('status'); s.className = 'status' + (on ? ' dirty' : '');
+      s.textContent = on ? '● 有未保存的修改 Unsaved changes' : '';
     }
-    function text(value, max, cb){
-      var i = el('input', 'in'); i.value = value; i.maxLength = max; i.style.width = '100%';
-      i.addEventListener('input', function(){ cb(i.value); markDirty(true); }); return i;
-    }
-
-    var g3 = el('div', 'grid3');
-    g3.appendChild(field('图标', 'Emoji', text(r.emoji || '', 8, function(v){ r.emoji = v; renderList(); })));
-    g3.appendChild(field('标题', 'Title (English)', text(r.title || '', 40, function(v){ r.title = v; renderList(); })));
-    var kind = el('select', 'in'); kind.style.width = '100%';
-    [['list', '词语顺序（星期、数字…）'], ['sentence', '句子（按语序）']].forEach(function(o){
-      var op = el('option', '', o[1]); op.value = o[0]; if(r.kind === o[0]) op.selected = true; kind.appendChild(op);
-    });
-    kind.addEventListener('change', function(){ r.kind = kind.value; markDirty(true); renderPreview(); });
-    g3.appendChild(field('类型', 'Type', kind));
-    box.appendChild(g3);
-
-    box.appendChild(field('孩子看到的中文提示', 'Chinese hint shown to kids — e.g. the sentence meaning', text(r.zh || '', 60, function(v){ r.zh = v; })));
-
-    var en = el('label', 'chk'); en.style.marginTop = '10px';
-    var cb = el('input'); cb.type = 'checkbox'; cb.checked = r.enabled;
-    cb.addEventListener('change', function(){ r.enabled = cb.checked; markDirty(true); renderList(); });
-    en.appendChild(cb); en.appendChild(document.createTextNode('在游戏中显示这个故事 Show in the game'));
-    box.appendChild(en);
-
-    var help = el('div', 'help'); help.style.marginTop = '12px';
-    help.innerHTML = '每行一个词：<code>单词 | 中文 | 表情 | 发音</code>（后三项可以不写）。<b>第一行是起始词</b>，毛毛虫从它开始，孩子要按顺序找出其余的词。最多 12 个词。<br>' +
-      '如果电脑读错了，在第 4 项写出读音，例如 <code>read | 读 | 📖 | reed</code>。点击下面的 ▶ 试听。<br>' +
-      '<small>One word per line: <code>word | 中文 | emoji | pronunciation</code>. The first line is the starting word. If the voice mispronounces a word, respell it in the 4th column and press ▶.</small>';
-    box.appendChild(help);
-
-    var ta = el('textarea', 'in'); ta.rows = Math.max(6, r.words.length + 1);
-    ta.value = r.words.map(toLine).join('\n');
-    ta.placeholder = 'I | 我 | 🙋\nlike | 喜欢 | ❤️\napples | 苹果 | 🍎';
-    ta.addEventListener('input', function(){ r.words = parseLines(ta.value); markDirty(true); renderList(); renderPreview(); });
-    box.appendChild(field('✅ 按正确顺序的单词', 'Words in the correct order', ta));
-
-    var td = el('textarea', 'in'); td.rows = Math.max(3, r.decoys.length + 1);
-    td.value = r.decoys.map(toLine).join('\n');
-    td.placeholder = 'cat | 猫 | 🐱\nblue | 蓝色 | 🔵';
-    td.addEventListener('input', function(){ r.decoys = parseLines(td.value); markDirty(true); renderPreview(); });
-    box.appendChild(field('🎭 干扰词（不会被吃，选错会提示）', 'Extra wrong words (optional, max 6)', td));
-
-    var warn = el('div', 'warn'); warn.id = 'rWarn'; box.appendChild(warn);
-    var pv = el('div'); pv.id = 'rPreview'; box.appendChild(pv);
-
-    var act = el('div', 'row'); act.style.marginTop = '14px';
-    var del = el('button', 'ghost-btn danger', '🗑 删除这个故事 Delete'); del.type = 'button';
-    del.addEventListener('click', function(){
-      if(!confirm('删除“' + (r.title || '') + '”？ Delete this round?')) return;
-      cfg.rounds.splice(sel, 1); sel = Math.max(0, sel - 1); markDirty(true); renderList(); renderEditor();
-    });
-    act.appendChild(del); box.appendChild(act);
-    renderPreview();
-  }
-
-  function renderPreview(){
-    var r = cfg.rounds[sel]; if(!r) return;
-    var warn = $('rWarn'), pv = $('rPreview'); if(!warn || !pv) return;
-    var msgs = [];
-    if(r.words.length < 2) msgs.push('⚠️ 至少需要 2 个单词，否则这个故事不会出现在游戏里。');
-    if(r.words.length > 12) msgs.push('⚠️ 最多 12 个单词，多出的会被忽略。');
-    if(r.decoys.length > 6) msgs.push('⚠️ 最多 6 个干扰词，多出的会被忽略。');
-    var lw = r.words.map(function(x){ return x.w.toLowerCase(); });
-    var clash = r.decoys.filter(function(x){ return lw.indexOf(x.w.toLowerCase()) >= 0; });
-    if(clash.length) msgs.push('⚠️ 干扰词与正确单词重复（会被自动忽略）：' + clash.map(function(x){ return x.w; }).join(', '));
-    warn.hidden = !msgs.length; warn.innerHTML = msgs.join('<br>');
-
-    pv.innerHTML = '';
-    if(!r.words.length) return;
-    var head = el('div', 'row'); head.style.margin = '10px 0 6px';
-    head.appendChild(el('b', '', '👀 预览 Preview'));
-    var all = el('button', 'ghost-btn', '▶ 读整句 Read all'); all.type = 'button';
-    all.addEventListener('click', function(){
-      G.ac();
-      var s = r.words.map(function(x){ return x.say || x.w; }).join(r.kind === 'sentence' ? ' ' : ', ');
-      G.speak(s, { rate: speakRate() });
-    });
-    head.appendChild(all); pv.appendChild(head);
-    var wrap = el('div', 'table-wrap preview'), tbl = el('table'), tb = el('tbody');
-    function addRows(list, decoy){
-      list.forEach(function(w, i){
-        var tr = el('tr');
-        tr.appendChild(el('td', '', decoy ? '✗' : String(i + 1)));
-        tr.appendChild(el('td', '', w.w)); tr.appendChild(el('td', '', w.zh));
-        tr.appendChild(el('td', '', w.e)); tr.appendChild(el('td', '', w.say ? '🔈 ' + w.say : ''));
-        var b = el('button', '', '▶'); b.type = 'button';
-        b.addEventListener('click', function(){ G.ac(); G.speak(w.say || w.w, { rate: speakRate() }); });
-        var c = el('td'); c.appendChild(b); tr.appendChild(c);
-        tb.appendChild(tr);
+    function load(){
+      return G.loadConfig(def.key).then(function(raw){
+        var usingDefaults = !(raw && Array.isArray(raw.rounds) && raw.rounds.length);
+        cfg = clone(usingDefaults ? def.defaults : raw);
+        cfg.settings = Object.assign({ showChinese: true, speechRate: 0.85, hintAfter: 2, idleHintSec: 15 }, def.defaults.settings, cfg.settings || {});
+        cfg.rounds.forEach(function(r){ r.words = r.words || []; r.decoys = r.decoys || []; r.kind = r.kind || 'list'; if(r.enabled == null) r.enabled = true; });
+        sel = 0; loaded = true;
+        q('defNote').hidden = !usingDefaults;
+        q('zh').checked = cfg.settings.showChinese !== false;
+        q('rate').value = cfg.settings.speechRate;
+        q('hint').value = String(cfg.settings.hintAfter);
+        q('idle').value = cfg.settings.idleHintSec;
+        (def.extra || []).forEach(function(x){ sec.querySelector('[data-extra="' + x.key + '"]').value = cfg.settings[x.key] != null ? cfg.settings[x.key] : x.def; });
+        markDirty(false); renderList(); renderEditor();
       });
     }
-    addRows(r.words, false); addRows(r.decoys, true);
-    tbl.appendChild(tb); wrap.appendChild(tbl); pv.appendChild(wrap);
+    q('zh').addEventListener('change', function(){ cfg.settings.showChinese = this.checked; markDirty(true); });
+    q('rate').addEventListener('input', function(){ cfg.settings.speechRate = Math.min(1.3, Math.max(0.4, Number(this.value) || 0.85)); markDirty(true); });
+    q('hint').addEventListener('change', function(){ cfg.settings.hintAfter = Number(this.value); markDirty(true); });
+    q('idle').addEventListener('input', function(){ cfg.settings.idleHintSec = Math.max(0, Number(this.value) || 0); markDirty(true); });
+    (def.extra || []).forEach(function(x){
+      sec.querySelector('[data-extra="' + x.key + '"]').addEventListener('input', function(){
+        cfg.settings[x.key] = Math.min(x.max, Math.max(x.min, parseInt(this.value, 10) || x.def)); markDirty(true);
+      });
+    });
+
+    function renderList(){
+      var l = q('list'); l.innerHTML = '';
+      cfg.rounds.forEach(function(r, i){
+        var b = el('button', 'ritem' + (i === sel ? ' on' : '') + (r.enabled ? '' : ' off')); b.type = 'button';
+        b.appendChild(el('span', 'em', r.emoji || def.icon));
+        var t = el('span', 't'); t.appendChild(el('b', '', r.title || '(无标题)'));
+        t.appendChild(el('small', '', r.words.length + ' 词' + (r.enabled ? '' : ' · 已隐藏')));
+        b.appendChild(t);
+        [['▲', -1], ['▼', 1]].forEach(function(p){
+          var a = el('span', '', p[0]); a.style.cssText = 'padding:2px 6px; cursor:pointer; color:var(--ink-soft)';
+          a.title = p[1] < 0 ? '上移' : '下移';
+          a.addEventListener('click', function(ev){ ev.stopPropagation(); move(i, p[1]); });
+          b.appendChild(a);
+        });
+        b.addEventListener('click', function(){ sel = i; renderList(); renderEditor(); });
+        l.appendChild(b);
+      });
+    }
+    function move(i, d){
+      var j = i + d; if(j < 0 || j >= cfg.rounds.length) return;
+      var t = cfg.rounds[i]; cfg.rounds[i] = cfg.rounds[j]; cfg.rounds[j] = t;
+      sel = j; markDirty(true); renderList();
+    }
+    q('add').addEventListener('click', function(){
+      cfg.rounds.push({ id: 'r' + Date.now().toString(36), title: 'New story', zh: '', emoji: def.icon, kind: 'list', enabled: true,
+        words: [{ w: 'cat', zh: '猫', e: '🐱', say: '' }, { w: 'dog', zh: '狗', e: '🐶', say: '' }, { w: 'fish', zh: '鱼', e: '🐟', say: '' }], decoys: [] });
+      sel = cfg.rounds.length - 1; markDirty(true); renderList(); renderEditor();
+    });
+    q('dup').addEventListener('click', function(){
+      if(!cfg.rounds[sel]) return;
+      var c = clone(cfg.rounds[sel]); c.id = 'r' + Date.now().toString(36); c.title += ' (copy)';
+      cfg.rounds.splice(sel + 1, 0, c); sel++; markDirty(true); renderList(); renderEditor();
+    });
+
+    function renderEditor(){
+      var box = q('ed'); box.innerHTML = '';
+      var r = cfg.rounds[sel];
+      if(!r){ box.appendChild(el('div', 'empty', '没有题目。点击“新增”。')); return; }
+      function field(label, sub, input){
+        var l = el('label', 'f'); l.appendChild(document.createTextNode(label));
+        if(sub) l.appendChild(el('small', '', ' ' + sub));
+        l.appendChild(input); return l;
+      }
+      function text(value, max, cb){
+        var i = el('input', 'in'); i.value = value; i.maxLength = max; i.style.width = '100%';
+        i.addEventListener('input', function(){ cb(i.value); markDirty(true); }); return i;
+      }
+      var g3 = el('div', def.kind ? 'grid3' : 'grid2');
+      g3.appendChild(field('图标', 'Emoji', text(r.emoji || '', 8, function(v){ r.emoji = v; renderList(); })));
+      g3.appendChild(field('标题', 'Title (English)', text(r.title || '', 40, function(v){ r.title = v; renderList(); })));
+      if(def.kind){
+        var kind = el('select', 'in'); kind.style.width = '100%';
+        [['list', '词语顺序（星期、数字…）'], ['sentence', '句子（按语序）']].forEach(function(o){
+          var op = el('option', '', o[1]); op.value = o[0]; if(r.kind === o[0]) op.selected = true; kind.appendChild(op);
+        });
+        kind.addEventListener('change', function(){ r.kind = kind.value; markDirty(true); renderPreview(); });
+        g3.appendChild(field('类型', 'Type', kind));
+      }
+      box.appendChild(g3);
+      box.appendChild(field(def.order ? '孩子看到的中文提示' : '故事的中文名', def.order ? 'Chinese hint shown to kids — e.g. the sentence meaning' : 'Chinese title shown in the menu', text(r.zh || '', 60, function(v){ r.zh = v; })));
+
+      var en = el('label', 'chk'); en.style.marginTop = '10px';
+      var cb = el('input'); cb.type = 'checkbox'; cb.checked = r.enabled;
+      cb.addEventListener('change', function(){ r.enabled = cb.checked; markDirty(true); renderList(); });
+      en.appendChild(cb); en.appendChild(document.createTextNode('在游戏中显示这个故事 Show in the game'));
+      box.appendChild(en);
+
+      var help = el('div', 'help'); help.style.marginTop = '12px';
+      help.innerHTML = '每行一个词：<code>单词 | 中文 | 表情 | 发音</code>（后三项可以不写）。' + def.help + '<br>' +
+        '如果电脑读错了，在第 4 项写出读音，例如 <code>read | 读 | 📖 | reed</code>。点击下面的 ▶ 试听。<br>' +
+        '<small>One word per line: <code>word | 中文 | emoji | pronunciation</code>.</small>';
+      box.appendChild(help);
+
+      var ta = el('textarea', 'in'); ta.rows = Math.max(6, r.words.length + 1);
+      ta.value = r.words.map(toLine).join('\n');
+      ta.placeholder = 'cat | 猫 | 🐱\ndog | 狗 | 🐶\nfish | 鱼 | 🐟';
+      ta.addEventListener('input', function(){ r.words = parseLines(ta.value); markDirty(true); renderList(); renderPreview(); });
+      box.appendChild(field(def.order ? '✅ 按正确顺序的单词' : '✅ 单词', def.order ? 'Words in the correct order' : 'Words', ta));
+
+      if(def.decoys){
+        var td = el('textarea', 'in'); td.rows = Math.max(3, r.decoys.length + 1);
+        td.value = r.decoys.map(toLine).join('\n');
+        td.placeholder = 'lion | 狮子 | 🦁\nblue | 蓝色 | 🔵';
+        td.addEventListener('input', function(){ r.decoys = parseLines(td.value); markDirty(true); renderPreview(); });
+        box.appendChild(field('🎭 干扰词（错误选项，可以不写）', 'Extra wrong answers (optional, max 6)', td));
+      }
+
+      var warn = el('div', 'warn'); warn.setAttribute('data-k', 'warn'); box.appendChild(warn);
+      var pv = el('div'); pv.setAttribute('data-k', 'pv'); box.appendChild(pv);
+
+      var act = el('div', 'row'); act.style.marginTop = '14px';
+      var del = el('button', 'ghost-btn danger', '🗑 删除这个故事 Delete'); del.type = 'button';
+      del.addEventListener('click', function(){
+        if(!confirm('删除“' + (r.title || '') + '”？ Delete this round?')) return;
+        cfg.rounds.splice(sel, 1); sel = Math.max(0, sel - 1); markDirty(true); renderList(); renderEditor();
+      });
+      act.appendChild(del); box.appendChild(act);
+      renderPreview();
+    }
+
+    function renderPreview(){
+      var r = cfg.rounds[sel]; if(!r) return;
+      var warn = q('warn'), pv = q('pv'); if(!warn || !pv) return;
+      var msgs = [];
+      if(r.words.length < def.min) msgs.push('⚠️ 至少需要 ' + def.min + ' 个单词，否则这个故事不会出现在游戏里。');
+      if(r.words.length > 12) msgs.push('⚠️ 最多 12 个单词，多出的会被忽略。');
+      if(def.decoys && r.decoys.length > 6) msgs.push('⚠️ 最多 6 个干扰词，多出的会被忽略。');
+      if(def.key === 'frog' || def.key === 'dragon'){
+        var noPic = r.words.filter(function(x){ return !x.e && !x.zh; });
+        if(noPic.length) msgs.push('⚠️ 这些词没有表情也没有中文，孩子看不到提示：' + noPic.map(function(x){ return x.w; }).join(', '));
+      }
+      if(def.key === 'spell'){
+        var long = r.words.filter(function(x){ return x.w.length > 10; });
+        if(long.length) msgs.push('⚠️ 这些词太长，手机上不好拼：' + long.map(function(x){ return x.w; }).join(', '));
+      }
+      if(def.decoys){
+        var lw = r.words.map(function(x){ return x.w.toLowerCase(); });
+        var clash = r.decoys.filter(function(x){ return lw.indexOf(x.w.toLowerCase()) >= 0; });
+        if(clash.length) msgs.push('⚠️ 干扰词与正确单词重复（会被自动忽略）：' + clash.map(function(x){ return x.w; }).join(', '));
+      }
+      warn.hidden = !msgs.length; warn.innerHTML = msgs.join('<br>');
+
+      pv.innerHTML = '';
+      if(!r.words.length) return;
+      var head = el('div', 'row'); head.style.margin = '10px 0 6px';
+      head.appendChild(el('b', '', '👀 预览 Preview'));
+      var all = el('button', 'ghost-btn', '▶ 全部读一遍 Read all'); all.type = 'button';
+      all.addEventListener('click', function(){
+        G.ac();
+        G.speak(r.words.map(function(x){ return x.say || x.w; }).join(r.kind === 'sentence' ? ' ' : ', '), { rate: cfg.settings.speechRate });
+      });
+      head.appendChild(all); pv.appendChild(head);
+      var wrap = el('div', 'table-wrap preview'), tbl = el('table'), tb = el('tbody');
+      function addRows(list, decoy){
+        list.forEach(function(w, i){
+          var tr = el('tr');
+          tr.appendChild(el('td', '', decoy ? '✗' : String(i + 1)));
+          tr.appendChild(el('td', '', w.w)); tr.appendChild(el('td', '', w.zh));
+          tr.appendChild(el('td', '', w.e)); tr.appendChild(el('td', '', w.say ? '🔈 ' + w.say : ''));
+          var b = el('button', '', '▶'); b.type = 'button';
+          b.addEventListener('click', function(){ G.ac(); G.speak(w.say || w.w, { rate: cfg.settings.speechRate }); });
+          var c = el('td'); c.appendChild(b); tr.appendChild(c);
+          tb.appendChild(tr);
+        });
+      }
+      addRows(r.words, false); if(def.decoys) addRows(r.decoys, true);
+      tbl.appendChild(tb); wrap.appendChild(tbl); pv.appendChild(wrap);
+    }
+
+    q('save').addEventListener('click', function(){
+      var bad = cfg.rounds.filter(function(r){ return r.words.length < def.min; });
+      if(bad.length && !confirm('有故事少于 ' + def.min + ' 个单词，它们不会出现在游戏里。仍然保存吗？\nSome rounds are too short and will be hidden. Save anyway?')) return;
+      var s = q('status'); s.className = 'status'; s.textContent = '保存中…';
+      G.api('api/teacher/games/' + def.key + '/config', 'PUT', { config: cfg }).then(function(){
+        q('defNote').hidden = true;
+        markDirty(false); s.className = 'status ok'; s.textContent = '✓ 已保存 Saved'; toast('已保存 ✓');
+      }).catch(function(e){ s.className = 'status err'; s.textContent = '保存失败 Save failed: ' + e.message; });
+    });
+    q('reset').addEventListener('click', function(){
+      if(!confirm('恢复为默认题目？你修改过的内容会丢失。\nRestore the built-in rounds? Your changes will be lost.')) return;
+      G.api('api/teacher/games/' + def.key + '/config', 'DELETE').then(function(){ toast('已恢复默认 ✓'); return load(); }).catch(function(e){ toast(e.message); });
+    });
+
+    return { section: sec, load: function(){ return loaded ? Promise.resolve() : load(); } };
   }
 
-  $('saveCat').addEventListener('click', function(){
-    var bad = cfg.rounds.filter(function(r){ return r.words.length < 2; });
-    if(bad.length && !confirm('有故事少于 2 个单词，它们不会出现在游戏里。仍然保存吗？\nSome rounds have fewer than 2 words and will be hidden. Save anyway?')) return;
-    var s = $('catStatus'); s.className = 'status'; s.textContent = '保存中…';
-    G.api('api/teacher/games/caterpillar/config', 'PUT', { config: cfg }).then(function(){
-      usingDefaults = false; $('defaultsNote').hidden = true;
-      markDirty(false); s.className = 'status ok'; s.textContent = '✓ 已保存 Saved'; toast('已保存 ✓');
-    }).catch(function(e){ s.className = 'status err'; s.textContent = '保存失败 Save failed: ' + e.message; });
-  });
-  $('resetCat').addEventListener('click', function(){
-    if(!confirm('恢复为默认题目？你修改过的内容会丢失。\nRestore the built-in rounds? Your changes will be lost.')) return;
-    G.api('api/teacher/games/caterpillar/config', 'DELETE').then(function(){ toast('已恢复默认 ✓'); return loadCat(); }).catch(function(e){ toast(e.message); });
-  });
+  var editors = {};
+  (function mountEditors(){
+    var anchor = $('editorsAnchor'), tabs = $('tabs'), sharkBtn = tabs.querySelector('[data-tab="shark"]'), filter = $('gameFilter');
+    EDITORS.forEach(function(def){
+      var ed = makeEditor(def); editors[def.key] = ed;
+      anchor.parentNode.insertBefore(ed.section, anchor);
+      var b = el('button'); b.type = 'button'; b.dataset.tab = def.key;
+      b.innerHTML = def.icon + ' ' + def.zh + '<small>' + def.en + '</small>';
+      tabs.insertBefore(b, sharkBtn);
+      var op = el('option', '', def.icon + ' ' + def.zh + ' ' + def.en); op.value = def.key;
+      filter.insertBefore(op, filter.querySelector('option[value="shark"]'));
+    });
+  })();
+  function loadCat(){ return editors.caterpillar.load(); }
 })();
 </script>
 </body>
