@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lily Hop 青蛙过河</title>
+<link rel="stylesheet" href="../shared/base.css">
+<link rel="stylesheet" href="../shared/kit.css">
+<style>
+  body{background:#0B1F3A; overflow:hidden}
+  .kgame.g-frog{background:linear-gradient(180deg,#0E2748 0%,#0F3A5C 22%,#0E6577 52%,#0B7F86 100%)}
+
+  /* --- небо, луна, дальний берег --- */
+  .sky{position:absolute; left:0; right:0; top:0; height:34%; pointer-events:none; -webkit-mask-image:linear-gradient(180deg,#000 62%,transparent); mask-image:linear-gradient(180deg,#000 62%,transparent)}
+  .sky svg{width:100%; height:100%; display:block}
+  .star{animation:tw 3s ease-in-out infinite}
+  .star:nth-child(2n){animation-delay:-1.2s} .star:nth-child(3n){animation-delay:-2.1s}
+  @keyframes tw{50%{opacity:.25}}
+
+  /* --- вода: мерцающие каустики из двух слоёв шума --- */
+  .water{position:absolute; left:0; right:0; top:13%; bottom:0; overflow:hidden; pointer-events:none;
+    background:linear-gradient(180deg,rgba(14,60,90,0) 0%,rgba(10,120,135,.0) 30%,rgba(18,160,160,.35) 100%)}
+  .glint{position:absolute; inset:-20%; opacity:.36; mix-blend-mode:screen; background-size:256px 256px;
+    animation:glintA 38s linear infinite}
+  .glint.b{opacity:.22; background-size:410px 410px; animation:glintB 55s linear infinite reverse}
+  @keyframes glintA{to{background-position:256px 512px}}
+  @keyframes glintB{to{background-position:-410px 410px}}
+  .moonpath{position:absolute; left:50%; top:10%; width:34%; height:60%; transform:translateX(-50%); pointer-events:none;
+    background:radial-gradient(ellipse at 50% 0, rgba(255,246,214,.28), rgba(255,246,214,0) 70%); filter:blur(6px)}
+
+  /* --- камыши по краям (параллакс) --- */
+  .reeds{position:absolute; top:12%; bottom:0; width:clamp(26px,8vw,70px); pointer-events:none; opacity:.9;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='260' viewBox='0 0 80 260'%3E%3Cg stroke-linecap='round' fill='none'%3E%3Cpath d='M20 260 C 18 180 24 110 16 30' stroke='%23123F2E' stroke-width='5'/%3E%3Cpath d='M44 260 C 48 190 40 120 50 50' stroke='%230E3326' stroke-width='5'/%3E%3Cpath d='M64 260 C 62 200 68 150 60 90' stroke='%23164B35' stroke-width='4'/%3E%3C/g%3E%3Crect x='11' y='18' width='10' height='34' rx='5' fill='%236B3B1E'/%3E%3Crect x='45' y='38' width='9' height='30' rx='4.5' fill='%2355301A'/%3E%3C/svg%3E") repeat-y;
+    background-size:100% auto; transition:background-position .9s cubic-bezier(.45,0,.2,1)}
+  .reeds.l{left:0} .reeds.r{right:0; transform:scaleX(-1)}
+
+  /* --- мир с кувшинками --- */
+  .wclip{position:absolute; left:0; right:0; top:11%; bottom:0; overflow:hidden;
+    -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 14%); mask-image:linear-gradient(180deg,transparent 0,#000 14%)}
+  .world{position:absolute; left:0; top:0; width:100%; height:0; transition:transform .85s cubic-bezier(.45,0,.2,1); will-change:transform}
+  .pad{
+    position:absolute; border:0; background:none; padding:0; cursor:pointer; font-family:inherit;
+    display:flex; align-items:center; justify-content:center; transform-origin:50% 50%;
+    filter:drop-shadow(0 10px 6px rgba(0,20,30,.35));
+    animation:padin .5s cubic-bezier(.3,1.5,.5,1) backwards, padbob 3.4s ease-in-out var(--del,0s) infinite;
+  }
+  .pad svg.disc{position:absolute; inset:0; width:100%; height:100%; overflow:visible}
+  .pad .lbl{
+    position:relative; z-index:2; color:#fff; font-weight:900; text-align:center; line-height:1; padding:0 6%;
+    -webkit-text-stroke:4px #1c6a3e; paint-order:stroke fill; text-shadow:0 3px 0 rgba(10,60,35,.45); letter-spacing:.2px; word-break:keep-all;
+  }
+  .pad:active{transform:scale(.94)}
+  @keyframes padin{0%{transform:scale(0) rotate(-40deg); opacity:0}}
+  @keyframes padbob{50%{transform:translateY(-5px) rotate(var(--rot,1.5deg))}}
+  .pad.wrong{animation:padwrong .55s ease-in forwards}
+  @keyframes padwrong{20%{transform:translateX(-7px) rotate(-6deg)} 45%{transform:translateX(7px) rotate(6deg)} 100%{transform:translateY(26px) scale(.35) rotate(18deg); opacity:0}}
+  .pad.gone{animation:padgone .55s ease-in forwards; pointer-events:none}
+  @keyframes padgone{to{transform:translateY(20px) scale(.2) rotate(-25deg); opacity:0}}
+  .pad.done{animation:none; pointer-events:none}
+  .pad.done .disc{filter:drop-shadow(0 0 10px rgba(255,224,120,.9)) saturate(1.1)}
+  .pad.done .lbl{-webkit-text-stroke-color:#9A6A12; opacity:.95}
+  .pad.hint{animation:padhint .8s ease-in-out infinite}
+  .pad.hint .disc{filter:drop-shadow(0 0 16px rgba(255,230,120,1)) brightness(1.15)}
+  @keyframes padhint{50%{transform:scale(1.14)}}
+  .pad.start .lbl{font-size:.95em}
+
+  /* --- лягушка --- */
+  .frog{position:absolute; z-index:6; pointer-events:none; will-change:transform}
+  .frog svg{width:100%; height:100%; overflow:visible; display:block}
+  .frog .inner{width:100%; height:100%; transform-origin:50% 90%; animation:fidle 2.8s ease-in-out infinite}
+  @keyframes fidle{50%{transform:scale(1.03,.97)}}
+  .frog .lid{transform-origin:center; animation:blink 4.2s infinite}
+  @keyframes blink{0%,94%,100%{transform:scaleY(0)} 96.5%{transform:scaleY(1)}}
+  .frog.no .inner{animation:fno .55s}
+  @keyframes fno{20%{transform:rotate(-9deg)} 45%{transform:rotate(9deg)} 70%{transform:rotate(-5deg)}}
+  .frog.dance .inner{animation:fdance .5s ease-in-out infinite alternate}
+  @keyframes fdance{from{transform:translateY(0) rotate(-6deg) scale(1.02,.98)} to{transform:translateY(-16px) rotate(6deg) scale(.96,1.06)}}
+  .frog .crown{position:absolute; left:50%; top:-26%; width:56%; transform:translateX(-50%); opacity:0}
+
+  /* --- панель-подсказка --- */
+  .clue{
+    position:absolute; z-index:12; left:50%; top:calc(8px); transform:translateX(-50%) scale(1);
+    min-width:150px; max-width:84vw; padding:10px 22px 12px; text-align:center; color:#2B2A4C;
+    background:rgba(255,255,255,.95); border:4px solid #fff; border-radius:30px;
+    box-shadow:0 6px 0 rgba(8,40,60,.35), 0 0 34px rgba(255,236,160,.45), inset 0 -5px 0 rgba(43,42,76,.07);
+  }
+  .clue.pop{animation:cluepop .55s cubic-bezier(.3,1.6,.5,1)}
+  @keyframes cluepop{0%{transform:translateX(-50%) scale(.4); opacity:0}}
+  .clue .pic{font-size:clamp(46px,13vw,74px); line-height:1.05; filter:drop-shadow(0 4px 0 rgba(0,0,0,.12))}
+  .clue .zhtxt{font-size:clamp(17px,4.4vw,24px); font-weight:900}
+  .clue .ask{font-size:12px; font-weight:800; color:#6A6890}
+  .clue .ear{
+    position:absolute; right:-14px; top:-14px; width:46px; height:46px; border-radius:50%; border:3px solid #fff;
+    background:var(--green); color:#fff; font-size:20px; box-shadow:0 4px 0 var(--green-dark); display:flex; align-items:center; justify-content:center; pointer-events:auto; cursor:pointer;
+  }
+  .clue .ear:active{transform:translateY(2px)}
+  @media (prefers-reduced-motion:reduce){ .glint,.pad,.star{animation:none} }
+</style>
+</head>
+<body>
+<script src="../shared/core.js" data-root="../"></script>
+<script src="../shared/fx.js"></script>
+<script src="../shared/kit.js"></script>
+<script src="defaults.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

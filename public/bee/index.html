@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bee Garden 小蜜蜂花园</title>
+<link rel="stylesheet" href="../shared/base.css">
+<link rel="stylesheet" href="../shared/kit.css">
+<style>
+  body{background:#8FD8FF; overflow:hidden}
+  .kgame.g-bee{background:linear-gradient(180deg,#6CCBFF 0%,#A8E4FF 34%,#E4F8FF 58%,#CFF3A6 100%)}
+
+  /* небо */
+  .sun{position:absolute; top:-30px; right:-30px; width:170px; height:170px; border-radius:50%; pointer-events:none;
+    background:radial-gradient(circle at 40% 38%,#FFFBE0 0,#FFE47A 45%,#FFC93C 100%); box-shadow:0 0 60px 20px rgba(255,220,100,.55)}
+  .sun::before{content:""; position:absolute; inset:-120px; border-radius:50%;
+    background:repeating-conic-gradient(rgba(255,240,170,.38) 0 7deg, transparent 7deg 20deg);
+    -webkit-mask-image:radial-gradient(circle,transparent 26%,#000 40%,transparent 72%); mask-image:radial-gradient(circle,transparent 26%,#000 40%,transparent 72%);
+    animation:rays 70s linear infinite}
+  @keyframes rays{to{transform:rotate(360deg)}}
+  .cloud{position:absolute; width:130px; height:42px; background:#fff; border-radius:42px; opacity:.92; filter:drop-shadow(0 6px 0 rgba(100,160,200,.18)); animation:cdrift 70s linear infinite alternate}
+  .cloud::before,.cloud::after{content:""; position:absolute; background:#fff; border-radius:50%}
+  .cloud::before{width:56px; height:56px; left:20px; top:-28px} .cloud::after{width:40px; height:40px; left:70px; top:-18px}
+  @keyframes cdrift{to{transform:translateX(22vw)}}
+  .hills{position:absolute; left:0; right:0; bottom:0; height:62%; width:100%; pointer-events:none}
+  .grass{position:absolute; left:0; right:0; bottom:0; height:84px; pointer-events:none; z-index:7; transform-origin:50% 100%; animation:gsway 4s ease-in-out infinite;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='84' viewBox='0 0 160 84'%3E%3Cg fill='%2346B04A'%3E%3Cpath d='M6 84 Q8 40 2 14 Q16 40 20 84Z'/%3E%3Cpath d='M34 84 Q30 46 40 6 Q46 46 52 84Z'/%3E%3Cpath d='M70 84 Q72 50 66 22 Q82 50 86 84Z'/%3E%3Cpath d='M104 84 Q100 44 112 10 Q118 48 122 84Z'/%3E%3Cpath d='M136 84 Q140 52 132 26 Q150 54 154 84Z'/%3E%3C/g%3E%3Cg fill='%2362C95A'%3E%3Cpath d='M20 84 Q24 56 18 36 Q32 58 34 84Z'/%3E%3Cpath d='M56 84 Q54 60 62 34 Q68 62 70 84Z'/%3E%3Cpath d='M90 84 Q94 58 88 38 Q102 60 104 84Z'/%3E%3Cpath d='M124 84 Q122 62 128 40 Q140 64 140 84Z'/%3E%3C/g%3E%3C/svg%3E") repeat-x bottom/160px 84px}
+  @keyframes gsway{50%{transform:skewX(1.4deg)}}
+  .bfly{position:absolute; width:34px; pointer-events:none; animation:bflight 22s ease-in-out infinite}
+  .bfly svg{width:100%; animation:bflap .28s ease-in-out infinite alternate; transform-origin:50% 60%}
+  @keyframes bflap{to{transform:scaleX(.45)}}
+  @keyframes bflight{0%{transform:translate(0,0)} 25%{transform:translate(32vw,-8vh)} 50%{transform:translate(14vw,10vh)} 75%{transform:translate(44vw,2vh)} 100%{transform:translate(0,0)}}
+
+  /* цветы */
+  .flower{
+    position:absolute; z-index:4; border:0; background:none; padding:0; cursor:pointer; font-family:inherit; color:#2B2A4C;
+    transform-origin:50% 100%; animation:fgrow .6s cubic-bezier(.3,1.5,.5,1) backwards, fsway 4.2s ease-in-out var(--del,0s) infinite;
+  }
+  .flower .stem{position:absolute; left:50%; top:calc(var(--D) * .5); bottom:0; width:7px; margin-left:-3.5px; border-radius:4px;
+    background:linear-gradient(90deg,#3E9E45,#6ACB5E,#3E9E45)}
+  .flower .stem::before,.flower .stem::after{content:""; position:absolute; width:26px; height:14px; border-radius:100% 0; background:#55BD55; bottom:38%}
+  .flower .stem::before{left:-24px; transform:rotate(-12deg)} .flower .stem::after{right:-24px; transform:scaleX(-1) rotate(-12deg)}
+  .flower .head{position:absolute; left:0; top:0; width:var(--D); height:var(--D); filter:drop-shadow(0 6px 3px rgba(40,90,40,.25))}
+  .flower .head svg{width:100%; height:100%; overflow:visible}
+  .flower .lbl{position:absolute; left:0; top:0; width:var(--D); height:var(--D); display:flex; align-items:center; justify-content:center; font-weight:900; text-align:center; line-height:1; padding:0 28%;
+    color:#5A3A0A; word-break:keep-all; text-shadow:0 1px 0 rgba(255,255,255,.8)}
+  .flower .zz{position:absolute; left:50%; top:calc(var(--D) * .98); transform:translateX(-50%); background:rgba(255,255,255,.9); border-radius:999px; padding:1px 9px; font-size:12px; font-weight:800; color:#5B5A80; white-space:nowrap; box-shadow:0 2px 0 rgba(43,42,76,.12)}
+  @keyframes fgrow{0%{transform:scale(0,0)}}
+  @keyframes fsway{50%{transform:rotate(var(--sw,2deg))}}
+  .flower:active .head{transform:scale(.94)}
+  .flower.nope{animation:fnope .6s ease-in forwards}
+  @keyframes fnope{20%{transform:rotate(-8deg)} 45%{transform:rotate(8deg)} 100%{transform:rotate(0) scale(.2,.05); opacity:0}}
+  .flower.gone{animation:fgone .6s ease-in forwards; pointer-events:none}
+  @keyframes fgone{to{transform:scale(.2,0); opacity:0}}
+  .flower.sip .head{animation:fsip .7s ease-in-out}
+  @keyframes fsip{30%{transform:scale(1.28) rotate(6deg)} 60%{transform:scale(.9) rotate(-4deg)} 100%{transform:scale(1)}}
+  .flower.hint .head{animation:fhint .8s ease-in-out infinite}
+  .flower.hint .head::after{content:""; position:absolute; inset:-30%; border-radius:50%; background:radial-gradient(circle,rgba(255,236,120,.9),rgba(255,236,120,0) 68%); z-index:-1}
+  @keyframes fhint{50%{transform:scale(1.16)}}
+  .flower.bloom .head{animation:fsip .8s ease-in-out}
+
+  /* пчела */
+  .bee{position:absolute; z-index:9; left:0; top:0; width:84px; height:68px; pointer-events:none; will-change:transform}
+  .bee svg{width:100%; height:100%; overflow:visible}
+  .bee .wing{transform-origin:50% 100%; animation:buzz .07s linear infinite alternate}
+  .bee .wing.b{animation-delay:-.03s}
+  @keyframes buzz{from{transform:rotate(-14deg) scaleY(1)} to{transform:rotate(10deg) scaleY(.55)}}
+  .bee.baby{width:44px; height:36px; position:absolute}
+
+  /* кнопка «послушать» */
+  .listen{
+    position:absolute; z-index:12; left:50%; top:10px; transform:translateX(-50%); display:flex; align-items:center; gap:10px;
+    border:4px solid #fff; border-radius:999px; padding:10px 22px 10px 12px; font-family:inherit; font-weight:900; font-size:17px; color:#fff; cursor:pointer;
+    background:linear-gradient(180deg,#FFB02E,#FF8A00); box-shadow:0 6px 0 #C86A00, 0 0 30px rgba(255,190,60,.6);
+  }
+  .listen:active{transform:translateX(-50%) translateY(3px); box-shadow:0 3px 0 #C86A00}
+  .listen .ic{width:42px; height:42px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; font-size:22px; box-shadow:inset 0 -3px 0 rgba(0,0,0,.08)}
+  .listen.pulse .ic{animation:lpulse .9s ease-in-out infinite}
+  @keyframes lpulse{50%{transform:scale(1.18)}}
+  .listen small{display:block; font-size:11px; opacity:.9; font-weight:800}
+
+  /* банка мёда */
+  .jar{position:absolute; z-index:8; left:12px; bottom:14px; width:70px; height:86px; pointer-events:none; filter:drop-shadow(0 6px 3px rgba(80,50,0,.25))}
+  .jar svg{width:100%; height:100%; overflow:visible}
+  .jar .fill{transform-origin:50% 100%; transform:scaleY(var(--lvl,0)); transition:transform .8s cubic-bezier(.3,1.4,.5,1)}
+  .jar.jig{animation:jig .6s}
+  @keyframes jig{25%{transform:rotate(-8deg) scale(1.08)} 55%{transform:rotate(6deg) scale(1.04)} 100%{transform:none}}
+  .rainbow{position:absolute; z-index:2; left:50%; top:22%; width:130%; transform:translateX(-50%); pointer-events:none}
+  .rainbow path{stroke-dasharray:1400; stroke-dashoffset:1400; animation:rdraw 2.2s ease-out forwards}
+  @keyframes rdraw{to{stroke-dashoffset:0}}
+  @media (prefers-reduced-motion:reduce){ .sun::before,.cloud,.grass,.flower,.bfly{animation:none} }
+</style>
+</head>
+<body>
+<script src="../shared/core.js" data-root="../"></script>
+<script src="../shared/fx.js"></script>
+<script src="../shared/kit.js"></script>
+<script src="defaults.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
