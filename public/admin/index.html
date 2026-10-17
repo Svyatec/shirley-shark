@@ -109,6 +109,7 @@
   <nav class="tabs" id="tabs">
     <button type="button" data-tab="results" class="on">📊 成绩<small>Results</small></button>
     <button type="button" data-tab="shark">🦈 鲨鱼<small>Shark</small></button>
+    <button type="button" data-tab="local">💻 本地运行<small>Offline</small></button>
     <button type="button" data-tab="guide">📖 使用说明<small>Guide</small></button>
   </nav>
 
@@ -154,6 +155,32 @@
     <p style="margin-top:14px"><a class="big-btn small" href="../shark/" target="_blank" rel="noopener" style="text-decoration:none; display:inline-block">打开鲨鱼游戏 Open ▶</a></p>
   </section>
 
+  <!-- Локальный запуск -->
+  <section class="panel" id="tab-local" hidden>
+    <h2>💻 不用网站，在电脑上直接运行 <small>Run the games without a website</small></h2>
+    <div class="help">
+      <b>方法一（最简单，不需要安装任何东西）</b><br>
+      1. 把整个游戏文件夹复制到电脑上（例如复制到桌面）。<br>
+      2. 打开文件夹 <code>public</code>，双击 <code>index.html</code>，用 <b>Chrome / Edge</b> 打开。<br>
+      3. 所有游戏都可以玩，不需要网络。<b>注意：</b>这种方式不保存学生成绩，老师后台的“成绩”页没有数据。<br><br>
+      <b>方法二（保存成绩，局域网里的平板也能玩）</b><br>
+      1. 在电脑上安装 <b>Node.js 22 或更新版本</b>（官网 nodejs.org，国内镜像 npmmirror.com/mirrors/node/）。<br>
+      2. 双击游戏文件夹里的 <code>start-windows.bat</code>（苹果电脑：<code>start-mac.command</code>）。<br>
+      3. 浏览器会自动打开 <code>http://localhost:3000</code>。黑色窗口里还会显示一个地址，例如 <code>http://192.168.1.5:3000</code>——同一个 Wi-Fi 下的平板、手机输入这个地址就能玩。<br>
+      4. 下课后关闭黑色窗口即可。成绩保存在 <code>data/game.db</code> 文件里。<br><br>
+      <b>在方法一里使用你自己编辑的题目</b><br>
+      1. 在下面点击 <b>“⬇ 下载 local-config.js”</b>，得到一个包含所有游戏题目的文件。<br>
+      2. 把它放进 <code>public</code> 文件夹，替换原来的 <code>local-config.js</code>。<br>
+      3. 重新打开游戏，就会使用你的题目。<br>
+      <small>Offline mode reads your rounds from <code>public/local-config.js</code>. Download it here and replace the file in the game folder.</small>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button class="big-btn green small" id="exportLocal" type="button">⬇ 下载 local-config.js</button>
+      <span class="status" id="exportStatus"></span>
+    </div>
+    <div class="warn" id="offlineNote" hidden style="margin-top:12px">📁 现在是<b>离线模式</b>（直接从文件夹打开）：在各游戏标签页里点击“保存”时，会下载新的 <code>local-config.js</code>，请把它放进 <code>public</code> 文件夹替换旧文件。</div>
+  </section>
+
   <!-- Инструкция -->
   <section class="panel" id="tab-guide" hidden>
     <div class="row" style="margin-bottom:10px">
@@ -167,11 +194,13 @@
 <div class="toast" id="toast"></div>
 
 <script src="../shared/core.js" data-root="../"></script>
+<script src="../local-config.js"></script>
 <script src="../caterpillar/defaults.js"></script>
 <script src="../frog/defaults.js"></script>
 <script src="../bee/defaults.js"></script>
 <script src="../spell/defaults.js"></script>
 <script src="../dragon/defaults.js"></script>
+<script src="../icecream/defaults.js"></script>
 <script>
 (function(){
   'use strict';
@@ -215,6 +244,34 @@
   var saved = null; try { saved = sessionStorage.getItem(SESSION_KEY); } catch(e){}
   if(saved) enter(saved).catch(function(){ $('login').hidden = false; });
 
+  /* ---------- офлайн: открыто прямо из папки или сервер недоступен ---------- */
+  var OFFLINE = false;
+  G.ready.then(function(){
+    if(G.isOnline()) return;
+    OFFLINE = true;
+    $('login').hidden = true; $('app').hidden = false;
+    $('offlineNote').hidden = false;
+    var bar = el('div', 'warn'); bar.innerHTML = '📁 离线模式 Offline mode — 没有服务器：成绩不会保存，题目保存为 <code>local-config.js</code> 文件。详见“💻 本地运行”。';
+    $('app').insertBefore(bar, $('tabs'));
+    loadResults(); loadCat();
+  });
+  function localConfigText(obj){
+    return '/*\n * 离线题目 Offline rounds — Teacher admin ' + new Date().toISOString().slice(0, 16).replace('T', ' ') + '\n * 放在 public/ 文件夹里，替换旧的 local-config.js\n */\nwindow.LOCAL_CONFIG = ' + JSON.stringify(obj, null, 1) + ';\n';
+  }
+  function downloadLocal(obj){
+    var blob = new Blob([localConfigText(obj)], { type: 'text/javascript' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'local-config.js';
+    document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+  $('exportLocal').addEventListener('click', function(){
+    var st = $('exportStatus'); st.className = 'status'; st.textContent = '…';
+    var keys = EDITORS.map(function(d){ return d.key; }), out = {};
+    Promise.all(keys.map(function(k){ return G.loadConfig(k).then(function(c){ if(c) out[k] = c; }); })).then(function(){
+      downloadLocal(out);
+      st.className = 'status ok'; st.textContent = '✓ 已下载（' + Object.keys(out).length + ' 个游戏有自定义题目）';
+    });
+  });
+
   /* ---------- вкладки ---------- */
   $('tabs').addEventListener('click', function(e){
     var b = e.target.closest('button[data-tab]'); if(!b) return;
@@ -227,6 +284,7 @@
 
   /* ---------- результаты ---------- */
   function loadResults(){
+    if(OFFLINE){ $('resStats').innerHTML = ''; $('topMistakes').innerHTML = '<div class="empty">离线模式没有成绩记录。要保存成绩，请用 start-windows.bat 启动（见“💻 本地运行”）。</div>'; $('resBody').innerHTML = ''; return; }
     var game = $('gameFilter').value;
     G.api('api/teacher/results?game=' + game).then(renderResults).catch(function(err){ toast('加载失败 ' + err.message); });
   }
@@ -297,7 +355,11 @@
     { key: 'dragon', icon: '🐉', zh: '龙蛋配对', en: 'Dragon Eggs', defaults: window.DRAGON_DEFAULTS, url: '../dragon/',
       unit: '每个故事 = 一颗金龙蛋', min: 2, kind: false, decoys: false,
       help: '记忆配对：一半蛋里是英文词，另一半是它的<b>表情图片</b>（没有图片时是中文）。每个词都要有表情或中文。每局随机选几对。',
-      extra: [{ key: 'pairs', label: '每局几对 Pairs per game', min: 2, max: 8, def: 6 }] }
+      extra: [{ key: 'pairs', label: '每局几对 Pairs per game', min: 2, max: 8, def: 6 }] },
+    { key: 'icecream', icon: '🍦', zh: '叠冰淇淋', en: 'Ice Cream Tower', defaults: window.ICECREAM_DEFAULTS, url: '../icecream/',
+      unit: '每个故事 = 一个冰淇淋', min: 2, kind: false, decoys: true,
+      help: '颜色练习：电脑说出一个颜色（或口味），孩子把这个颜色的冰淇淋球放到蛋筒上。颜色按英文名自动识别（red, pink, chocolate, mint…）；名字不在列表里时，在“表情”一项写颜色代码，例如 <code>light blue | 浅蓝色 | #9ED8FF</code>。干扰词 = 额外的错误颜色。',
+      extra: [{ key: 'scoops', label: '叠几个球 Scoops to win', min: 3, max: 7, def: 5 }, { key: 'choices', label: '每次几种颜色 Colors to choose', min: 2, max: 5, def: 4 }] }
   ];
   EDITORS.forEach(function(d){ GAMES[d.key] = d.icon + ' ' + d.zh; });
 
@@ -526,6 +588,13 @@
       var bad = cfg.rounds.filter(function(r){ return r.words.length < def.min; });
       if(bad.length && !confirm('有故事少于 ' + def.min + ' 个单词，它们不会出现在游戏里。仍然保存吗？\nSome rounds are too short and will be hidden. Save anyway?')) return;
       var s = q('status'); s.className = 'status'; s.textContent = '保存中…';
+      if(OFFLINE){
+        window.LOCAL_CONFIG = window.LOCAL_CONFIG || {};
+        window.LOCAL_CONFIG[def.key] = clone(cfg);
+        downloadLocal(window.LOCAL_CONFIG);
+        markDirty(false); s.className = 'status ok'; s.textContent = '⬇ 已下载 local-config.js — 请放进 public 文件夹替换旧文件';
+        return;
+      }
       G.api('api/teacher/games/' + def.key + '/config', 'PUT', { config: cfg }).then(function(){
         q('defNote').hidden = true;
         markDirty(false); s.className = 'status ok'; s.textContent = '✓ 已保存 Saved'; toast('已保存 ✓');
@@ -533,6 +602,7 @@
     });
     q('reset').addEventListener('click', function(){
       if(!confirm('恢复为默认题目？你修改过的内容会丢失。\nRestore the built-in rounds? Your changes will be lost.')) return;
+      if(OFFLINE){ if(window.LOCAL_CONFIG) delete window.LOCAL_CONFIG[def.key]; downloadLocal(window.LOCAL_CONFIG || {}); loaded = false; load(); return; }
       G.api('api/teacher/games/' + def.key + '/config', 'DELETE').then(function(){ toast('已恢复默认 ✓'); return load(); }).catch(function(e){ toast(e.message); });
     });
 

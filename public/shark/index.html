@@ -1067,6 +1067,8 @@
     hint.className = 'hint';
     if(player.role === 'teacher'){
       hint.textContent = 'Teacher practice games are not saved.';
+    } else if(!player.sessionId){
+      hint.textContent = 'Offline mode — results are not saved 离线模式，成绩不保存';
     } else {
       hint.textContent = 'Saving your result…';
       saving.then(function(){ hint.textContent = 'Result saved for ' + player.name + ' ✓'; })
@@ -1105,6 +1107,13 @@
       return data;
     }).catch(function(err){
       btn.disabled = false;
+      // сервера нет (игра открыта прямо из папки) — играем офлайн, результаты не сохраняются
+      if(err instanceof TypeError || location.protocol === 'file:'){
+        player.name = name; player.role = 'student'; player.sessionId = null;
+        $('playerName').textContent = name; $('playerChip').hidden = false;
+        hint.className = 'hint'; hint.textContent = 'Offline mode — results are not saved 离线模式，成绩不保存';
+        return { offline: true };
+      }
       hint.className = 'hint err';
       hint.textContent = err.message === 'Failed to fetch' ? 'Server is unreachable — start it with "node server.js".' : err.message;
       throw err;

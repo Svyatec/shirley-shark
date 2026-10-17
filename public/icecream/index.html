@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ice Cream Tower 叠冰淇淋</title>
+<link rel="stylesheet" href="../shared/base.css">
+<link rel="stylesheet" href="../shared/kit.css">
+<style>
+  body{background:#FFE4EE; overflow:hidden}
+  .kgame.g-ice{
+    background:
+      repeating-linear-gradient(90deg, rgba(255,255,255,.35) 0 34px, rgba(255,255,255,0) 34px 68px),
+      radial-gradient(ellipse at 50% 30%, #FFF6FA 0%, #FFE1EC 55%, #FFC9DD 100%);
+  }
+  /* узор из посыпки на стене */
+  .wall{position:absolute; inset:0; pointer-events:none; opacity:.55;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cg stroke-linecap='round' stroke-width='5'%3E%3Cpath d='M14 20 l10 -6' stroke='%23FF8FB0'/%3E%3Cpath d='M70 16 l-4 10' stroke='%239CD8FF'/%3E%3Cpath d='M98 58 l10 4' stroke='%23FFD86B'/%3E%3Cpath d='M30 74 l6 8' stroke='%23B9F0A8'/%3E%3Cpath d='M78 96 l-10 4' stroke='%23C9A8FF'/%3E%3Cpath d='M52 50 l8 -5' stroke='%23FFB38A'/%3E%3C/g%3E%3C/svg%3E")}
+  /* полосатый навес с фестонами */
+  .awning{position:absolute; left:0; right:0; top:0; height:34px; pointer-events:none; z-index:1;
+    background:repeating-linear-gradient(90deg,#FF7FA8 0 30px,#FFFFFF 30px 60px);
+    -webkit-mask:radial-gradient(circle 15px at 15px 19px,#000 98%,transparent) 0 0/30px 34px repeat-x, linear-gradient(#000,#000) 0 0/100% 19px no-repeat;
+    mask:radial-gradient(circle 15px at 15px 19px,#000 98%,transparent) 0 0/30px 34px repeat-x, linear-gradient(#000,#000) 0 0/100% 19px no-repeat;
+    filter:drop-shadow(0 4px 2px rgba(180,60,100,.25))}
+  /* мраморная стойка */
+  .counter{position:absolute; left:0; right:0; bottom:0; z-index:2; pointer-events:none;
+    background:
+      linear-gradient(115deg, transparent 20%, rgba(190,190,210,.35) 21%, transparent 23%),
+      linear-gradient(70deg, transparent 55%, rgba(200,200,220,.3) 56%, transparent 58%),
+      linear-gradient(160deg, transparent 70%, rgba(190,190,210,.25) 71%, transparent 73%),
+      linear-gradient(180deg,#FFFFFF,#F1EEF6);
+    border-top:10px solid #FF8FB5; box-shadow:0 -4px 0 rgba(255,255,255,.7) inset, 0 -6px 18px rgba(200,80,120,.18)}
+
+  /* карточка-заказ */
+  .order{
+    position:absolute; z-index:12; left:50%; top:12px; transform:translateX(-50%); display:flex; align-items:center; gap:12px;
+    background:rgba(255,255,255,.95); border:4px solid #fff; border-radius:999px; padding:8px 22px 8px 8px; color:#2B2A4C;
+    box-shadow:0 6px 0 rgba(200,70,110,.25), 0 0 30px rgba(255,170,200,.5), inset 0 -4px 0 rgba(43,42,76,.05);
+  }
+  .order.pop{animation:opop .55s cubic-bezier(.3,1.6,.5,1)}
+  @keyframes opop{0%{transform:translateX(-50%) scale(.5); opacity:0}}
+  .order .ear{width:50px; height:50px; border-radius:50%; border:0; background:linear-gradient(180deg,#FF8FB5,#FF5E95); color:#fff; font-size:22px; box-shadow:0 4px 0 #D83C76; cursor:pointer; flex:0 0 auto}
+  .order .ear:active{transform:translateY(3px); box-shadow:0 1px 0 #D83C76}
+  .order .w{font-size:clamp(24px,6.5vw,36px); font-weight:900; line-height:1; letter-spacing:.5px}
+  .order .z{font-size:14px; font-weight:800; color:#7A6890}
+  .order .please{font-size:12px; font-weight:800; color:#B07090}
+
+  /* рожок и башня */
+  .tower{position:absolute; z-index:6; transform-origin:50% 100%; transition:transform .6s cubic-bezier(.3,1.3,.5,1); pointer-events:none}
+  .cone{position:absolute; left:0; bottom:0; width:100%}
+  .cone svg{width:100%; display:block; overflow:visible}
+  .cone .lid{transform-origin:center; transform-box:fill-box; animation:blink 4.4s infinite}
+  @keyframes blink{0%,93%,100%{transform:scaleY(0)} 96%{transform:scaleY(1)}}
+  .cone .m-o{display:none}
+  .tower.oops .m-o{display:block} .tower.oops .m-s{display:none}
+  .tower.yay .cone{animation:yay .5s}
+  @keyframes yay{40%{transform:translateY(-10px) scale(1.04,.96)}}
+  .scoop{position:absolute; left:50%; transform:translateX(-50%); filter:drop-shadow(0 6px 4px rgba(120,40,70,.18))}
+  .scoop svg{width:100%; display:block; overflow:visible}
+  .scoop.land{animation:land .5s cubic-bezier(.3,1.6,.5,1)}
+  @keyframes land{0%{transform:translateX(-50%) translateY(-30px) scale(1.1,.8)} 45%{transform:translateX(-50%) translateY(0) scale(1.18,.78)} 75%{transform:translateX(-50%) scale(.94,1.08)} 100%{transform:translateX(-50%) scale(1)}}
+  .tower.dance{animation:tdance .45s ease-in-out infinite alternate}
+  @keyframes tdance{from{transform:var(--tscale) rotate(-4deg)} to{transform:var(--tscale) rotate(4deg) translateY(-8px)}}
+  .drop{position:absolute; z-index:5; border-radius:50%; border:4px dashed rgba(255,110,160,.75); background:radial-gradient(circle,rgba(255,255,255,.65),rgba(255,255,255,0) 70%); pointer-events:none; opacity:0; transform:scale(.8); transition:opacity .25s, transform .25s}
+  .drop.on{opacity:1; transform:scale(1); animation:dpulse 1s ease-in-out infinite}
+  .drop.near{border-color:#5BC16C; background:radial-gradient(circle,rgba(200,255,200,.8),rgba(255,255,255,0) 70%)}
+  @keyframes dpulse{50%{transform:scale(1.08)}}
+
+  /* витрина с ванночками */
+  .freezer{position:absolute; z-index:8; border-radius:26px; padding:10px;
+    background:linear-gradient(180deg,rgba(220,245,255,.75),rgba(180,225,245,.55)); border:4px solid rgba(255,255,255,.95);
+    box-shadow:0 8px 0 rgba(120,170,200,.35), inset 0 0 30px rgba(255,255,255,.7), inset 0 -10px 0 rgba(140,190,215,.35)}
+  .freezer::before{content:""; position:absolute; left:14px; right:40%; top:8px; height:10px; border-radius:8px; background:linear-gradient(90deg,rgba(255,255,255,.9),rgba(255,255,255,0))}
+  .tub{position:absolute; border:0; background:none; padding:0; cursor:grab; touch-action:none; font-family:inherit;
+    animation:tubin .5s cubic-bezier(.3,1.5,.5,1) backwards}
+  .tub:active{cursor:grabbing}
+  .tub svg{width:100%; height:100%; display:block; overflow:visible; pointer-events:none}
+  @keyframes tubin{0%{transform:translateY(30px) scale(.3); opacity:0}}
+  .tub.nope{animation:tnope .5s}
+  @keyframes tnope{20%{transform:rotate(-8deg)} 45%{transform:rotate(8deg)} 70%{transform:rotate(-4deg)}}
+  .tub.hint{animation:thint .8s ease-in-out infinite; filter:drop-shadow(0 0 14px rgba(255,220,90,1))}
+  .tub.hint::after{content:"👆"; position:absolute; right:-6px; bottom:-10px; font-size:30px; animation:finger .8s ease-in-out infinite}
+  @keyframes thint{50%{transform:scale(1.1)}}
+  @keyframes finger{50%{transform:translateY(-8px)}}
+  .ghost{position:absolute; z-index:50; pointer-events:none; filter:drop-shadow(0 12px 8px rgba(120,40,70,.3)); will-change:transform}
+  .ghost svg{width:100%; display:block; overflow:visible}
+  @media (max-height:520px){ .order{top:6px; padding:4px 16px 4px 4px} .order .ear{width:40px; height:40px; font-size:18px} .order .z{font-size:12px} .order .please{display:none} .awning{height:26px} }
+  @media (prefers-reduced-motion:reduce){ .tub,.drop.on,.cone .lid{animation:none} }
+</style>
+</head>
+<body>
+<script src="../shared/core.js" data-root="../"></script>
+<script src="../local-config.js"></script>
+<script src="../shared/fx.js"></script>
+<script src="../shared/kit.js"></script>
+<script src="defaults.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

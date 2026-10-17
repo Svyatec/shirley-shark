@@ -35,6 +35,9 @@
   .art.bee{background:linear-gradient(180deg,#7FD4FF,#CFF3A6)}
   .art.spell{background:linear-gradient(180deg,#38B6E8,#0F5E9E)}
   .art.dragon{background:linear-gradient(180deg,#4A2470,#D85A6E 70%,#FFB45E)}
+  .art.ice{background:repeating-linear-gradient(90deg,rgba(255,255,255,.45) 0 22px,rgba(255,255,255,0) 22px 44px),linear-gradient(180deg,#FFE1EC,#FFB7D0)}
+  .offline{background:#FFF4D6; border:2px solid #F3DC9B; border-radius:18px; padding:10px 16px; margin:-8px 0 18px; font-weight:700; color:#6A5A20}
+  .offline[hidden]{display:none}
   .art.soon{background:repeating-linear-gradient(45deg,#F1EFFF 0 14px,#E8E5FA 14px 28px); color:#9A97C4}
   .body{padding:16px 18px 20px; flex:1; display:flex; flex-direction:column; gap:6px}
   .title{font-size:22px; font-weight:900}
@@ -57,6 +60,7 @@
     <a class="icon-btn" href="admin/" title="Teacher 老师入口">👩‍🏫 <span>Teacher 老师</span></a>
   </header>
   <p class="lead">Pick a game! 选一个游戏吧！ 👇</p>
+  <div class="offline" id="offline" hidden>📁 离线模式 Offline mode：游戏可以正常玩，但成绩不会保存。需要保存成绩时，请双击游戏文件夹里的 <b>start-windows.bat</b>（见老师说明“本地运行”）。</div>
 
   <main class="grid">
     <a class="game" href="caterpillar/">
@@ -109,6 +113,16 @@
       </div>
     </a>
 
+    <a class="game" href="icecream/">
+      <div class="art ice"><span>🍦</span><span>🍒</span></div>
+      <div class="body">
+        <div class="title">Ice Cream Tower<span class="zh">叠冰淇淋</span></div>
+        <p class="desc">Listen to the color and drag the right scoop onto the cone. Build a tall tower with a cherry on top! 听颜色，把正确的冰淇淋球放到蛋筒上！</p>
+        <div class="tags"><span class="tag">No losing 没有失败</span><span class="tag">Colors 颜色</span></div>
+        <span class="big-btn green play">Play 开始玩 ▶</span>
+      </div>
+    </a>
+
     <a class="game" href="shark/">
       <div class="art shark"><span>🦈</span><span>🏄‍♀️</span></div>
       <div class="body">
@@ -122,5 +136,6 @@
 
   <footer>Teachers: open <a href="admin/">老师入口 / Teacher area</a> to edit games, see results and read the guide.</footer>
 </div>
+<script>if (location.protocol === "file:") document.getElementById("offline").hidden = false;</script>
 </body>
 </html>
