@@ -51,7 +51,7 @@
   .field{
     --orb:clamp(84px, min(27vw, 21vh), 128px);
     position:relative; z-index:5; flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden;
-    display:flex; flex-wrap:wrap; align-content:center; justify-content:center; gap:10px 14px; padding:12px 12px 8px;
+    display:flex; flex-wrap:wrap; align-content:safe center; justify-content:center; gap:10px 14px; padding:12px 12px 8px;
     transition:opacity .6s;
   }
   .orb{
@@ -66,8 +66,8 @@
   }
   .orb:active{transform:scale(.94)}
   .orb .e{font-size:calc(var(--orb) * .3); line-height:1}
-  .orb .t{font-size:calc(var(--orb) * .2); font-weight:900; word-break:break-word; text-align:center}
-  .orb .t.long{font-size:calc(var(--orb) * .15)}
+  .orb .t{font-size:calc(var(--orb) * .2); font-weight:900; white-space:nowrap; text-align:center; max-width:100%}
+  .orb .t.long{font-size:calc(var(--orb) * .14)}
   .orb .z{font-size:calc(var(--orb) * .12); font-weight:800; color:rgba(43,42,76,.62)}
   body.nozh .orb .z, body.nozh .strip small{display:none}
   @keyframes floaty{50%{transform:translateY(calc(var(--lift,6px) * -1)) rotate(var(--rot,1.5deg))}}
@@ -179,6 +179,11 @@
   .teacher-note{background:#FFF4D6; border-radius:14px; padding:8px 12px; font-size:13px; font-weight:700; margin-top:10px}
   .teacher-note a{color:var(--coral-dark); font-weight:900}
   @media (prefers-reduced-motion:reduce){ .orb,.seg,.head{animation:none} }
+  @media (max-width:420px){ .hud{gap:5px; padding-left:6px; padding-right:6px} .hud .icon-btn{height:36px; min-width:36px; padding:0 8px; font-size:15px} .chip{padding:6px 9px; font-size:13px} .chip.round{max-width:30vw} }
+  @media (max-height:520px){ .hud{padding-top:6px; padding-bottom:2px} .clue{font-size:15px} .clue small{display:none} .strip{margin-top:4px; min-height:32px; padding:3px 12px; font-size:18px} .ground{padding:4px 10px 6px; border-top-width:4px} .field{padding-top:6px; padding-bottom:4px} }
+  .game::after{content:""; position:absolute; inset:0; z-index:30; pointer-events:none; opacity:.06; mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E")}
+  .game::before{content:""; position:absolute; inset:0; z-index:29; pointer-events:none; background:radial-gradient(ellipse 120% 90% at 50% 45%, transparent 60%, rgba(30,60,30,.16) 100%)}
 </style>
 </head>
 <body>

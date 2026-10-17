@@ -55,3 +55,22 @@ button{font-family:inherit; cursor:pointer}
 .hint{font-size:13px; color:var(--ink-soft); min-height:18px; margin-top:6px}
 .hint.err{color:#C23B2A; font-weight:700}
 .zh{font-weight:700}
+
+/* --- премиальная отделка общих элементов --- */
+.overlay{backdrop-filter:blur(6px) saturate(1.2); -webkit-backdrop-filter:blur(6px) saturate(1.2); background:rgba(43,42,76,.38)}
+.overlay:not([hidden]) > .card{animation:cardIn .55s cubic-bezier(.2,1.4,.4,1)}
+@keyframes cardIn{0%{opacity:0; transform:translateY(30px) scale(.9)}}
+.card{
+  position:relative; border:3px solid transparent;
+  background:linear-gradient(#fff,#fff) padding-box, linear-gradient(135deg,#FFC2DD,#B8E4FF 45%,#C9F2A8 75%,#FFE38A) border-box;
+  box-shadow:0 12px 0 rgba(43,42,76,.10), 0 30px 60px rgba(40,30,90,.25);
+}
+.card h1{background:linear-gradient(100deg,#2B2A4C,#5B3FD0 50%,#FF5E95); -webkit-background-clip:text; background-clip:text; color:transparent}
+.card .emo{filter:drop-shadow(0 8px 6px rgba(0,0,0,.15)); animation:emoBob 3s ease-in-out infinite}
+@keyframes emoBob{50%{transform:translateY(-6px) rotate(-3deg)}}
+.big-btn,.big-btn.green{position:relative; overflow:hidden; background-image:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,0) 60%)}
+.big-btn::after{content:""; position:absolute; top:0; bottom:0; width:36%; left:-60%; background:linear-gradient(100deg,transparent,rgba(255,255,255,.5),transparent); transform:skewX(-20deg); animation:btnSweep 4.2s ease-in-out infinite; pointer-events:none}
+@keyframes btnSweep{0%,65%{left:-60%} 100%{left:130%}}
+.big-btn{background-color:var(--coral)} .big-btn.green{background-color:var(--green)}
+.name-input:focus{box-shadow:0 0 0 5px rgba(255,111,89,.18)}
+@media (prefers-reduced-motion:reduce){ .overlay > .card,.card .emo,.big-btn::after{animation:none} }

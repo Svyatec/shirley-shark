@@ -137,7 +137,7 @@
       freezer.style.cssText = 'left:' + fr.x + 'px;top:' + fr.y + 'px;width:' + fr.w + 'px;height:' + fr.h + 'px';
       L.fr = fr;
       var areaH = L.base - L.areaTop, areaW = land ? W * 0.44 : W;
-      L.coneW = clamp(Math.min(areaW * 0.36, areaH * 0.34), 56, 150);
+      L.coneW = clamp(Math.min(areaW * 0.36, areaH * 0.34), 56, 190);
       L.coneH = L.coneW * 1.3; L.scoopW = L.coneW * 1.2; L.scoopH = L.scoopW * 0.8; L.step = L.scoopH * 0.55;
       L.towerW = L.scoopW * 1.2;
       layoutTower(); layoutTubs();

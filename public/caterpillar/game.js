@@ -118,9 +118,13 @@
   /* ---------- поле со словами ---------- */
   function setOrbSize(n) {
     var f = $('field');
-    var area = f.clientWidth * Math.max(120, f.clientHeight);
-    var size = Math.sqrt(area / Math.max(1, n)) * 0.78;
-    f.style.setProperty('--orb', Math.max(66, Math.min(128, Math.round(size))) + 'px');
+    // подбираем колонки так, чтобы все кружки поместились в поле целиком, без перекрытий и прокрутки
+    var fw = f.clientWidth - 24, fh = Math.max(80, f.clientHeight - 20), gx = 14, gy = 10, best = 0;
+    for (var cols = 1; cols <= Math.max(1, n); cols++) {
+      var rows = Math.ceil(n / cols);
+      best = Math.max(best, Math.min((fw - gx * (cols - 1)) / cols, (fh - gy * (rows - 1)) / rows));
+    }
+    f.style.setProperty('--orb', Math.max(52, Math.min(128, Math.floor(best * 0.94))) + 'px');
   }
   function buildField() {
     var f = $('field');
@@ -147,7 +151,7 @@
   /* ---------- гусеница ---------- */
   function layoutTrack() {
     var w = $('track').clientWidth - 6;
-    S = Math.max(30, Math.min(88, Math.floor(w / (0.86 * words.length + 1.25))));
+    S = Math.max(26, Math.min(88, Math.floor(w / (0.86 * words.length + 1.25)), Math.floor(window.innerHeight * 0.14)));
     $('track').style.setProperty('--S', S + 'px');
   }
   function renderTrack(bornIdx) {

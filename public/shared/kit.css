@@ -71,3 +71,7 @@ body.nozh .zhline{display:none}
 .kstage.kenter{animation:kenter .7s cubic-bezier(.2,.8,.2,1)}
 @keyframes kenter{0%{clip-path:circle(0% at 50% 55%); filter:brightness(1.4)} 100%{clip-path:circle(150% at 50% 55%); filter:none}}
 @media (prefers-reduced-motion:reduce){ .kstage.kenter{animation:none} }
+.kround{background:linear-gradient(180deg,#FFFFFF,#FAF8FF)}
+.kround:hover{box-shadow:0 10px 0 rgba(43,42,76,.08), 0 0 0 4px rgba(255,180,215,.45), 0 18px 30px rgba(60,40,120,.15)}
+.kround .rw:not(.locked){filter:drop-shadow(0 6px 5px rgba(60,40,90,.22))}
+.kend-rw{filter:drop-shadow(0 12px 10px rgba(60,40,90,.25))}

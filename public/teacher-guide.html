@@ -61,6 +61,7 @@
       <li><a href="#s8">课堂使用建议</a></li>
       <li><a href="#s9">常见问题</a></li>
       <li><a href="#s10">给网站管理员的说明</a></li>
+      <li><a href="#s11">不用网站，在电脑上直接运行（本地运行）</a></li>
     </ol>
   </div>
 
@@ -73,6 +74,7 @@
     <tr><td>🐝 小蜜蜂花园<br><span class="en">Bee Garden</span></td><td>听电脑读一个词，让小蜜蜂飞到写着这个词的花上，装满蜂蜜罐。</td><td><b>没有失败。</b>练习听力，最后出现彩虹和小蜜蜂家族。</td></tr>
     <tr><td>🫧 泡泡拼单词<br><span class="en">Bubble Spell</span></td><td>看图、听音，按顺序点字母泡泡拼出单词。</td><td><b>没有失败。</b>练习拼写，每拼对一个词来一条小鱼，最后打开宝箱。</td></tr>
     <tr><td>🐉 龙蛋配对<br><span class="en">Dragon Eggs</span></td><td>翻开两颗蛋，找到“英文单词 ↔ 图片”的一对。</td><td><b>没有失败。</b>记忆配对游戏，每对孵出一条小龙，最后龙妈妈出场。</td></tr>
+    <tr><td>🍦 叠冰淇淋<br><span class="en">Ice Cream Tower</span></td><td>电脑说出一个颜色（或口味），孩子把这个颜色的冰淇淋球拖到蛋筒上（也可以直接点）。</td><td><b>没有失败。</b>练习颜色词，叠 3～7 个球后加奶油和樱桃。</td></tr>
     <tr><td>🦈 莎莉和鲨鱼<br><span class="en">Shirley &amp; the Shark</span></td><td>回答关于鲨鱼和英语语法（B1 水平）的问题。</td><td>答错鲨鱼会靠近，适合水平较高的学生。</td></tr>
   </table>
   <div class="note box"><b class="t">💡 以后还会增加新游戏</b>新游戏会出现在首页，并且都会在“老师后台”里有自己的编辑页面。</div>
@@ -118,6 +120,13 @@
     <li>不是一对：两颗蛋晃一晃再合上，没有惩罚。连续几次没配对，会有一对蛋短暂发光提示。</li>
     <li>全部配对后，龙妈妈飞来喷出彩虹火花。金龙蛋收集在“我的龙蛋”里。</li>
   </ol>
+  <h3>🍦 叠冰淇淋</h3>
+  <ol>
+    <li>蛋筒宝宝说出想要的颜色，例如 “Red, please!”，上方卡片写着这个英文词（点 🔊 可以再听）。</li>
+    <li>下面的冰柜里有几种颜色的冰淇淋。用手指（或鼠标）把正确颜色的球<b>拖到蛋筒上方的圆圈里</b>；小朋友也可以直接点一下那个球。</li>
+    <li>放错了：球会弹回冰柜，蛋筒宝宝惊讶地说 “Not …!”，电脑读出孩子选的颜色；错 2 次后正确的冰淇淋会发光。</li>
+    <li>叠够设定的球数（3～7 个）后，加上奶油和樱桃，彩色糖粒和烟花庆祝。冰淇淋收集在“我的冰淇淋”里。</li>
+  </ol>
   <h3>🦈 莎莉和鲨鱼</h3>
   <p>学生输入名字后回答问题，答对莎莉向海滩前进，答错鲨鱼靠近。答对全部问题莎莉就安全了。</p>
 
@@ -130,8 +139,9 @@
   <table>
     <tr><th>标签</th><th>作用</th></tr>
     <tr><td>📊 成绩</td><td>查看所有学生的游戏记录、最常见的错误。</td></tr>
-    <tr><td>🐛 毛毛虫 · 🐸 青蛙过河 · 🐝 小蜜蜂 · 🫧 泡泡拼单词 · 🐉 龙蛋配对</td><td>每个游戏都有自己的标签页：编辑故事、单词、发音和设置（编辑方法完全一样，见第 5 节）。</td></tr>
+    <tr><td>🐛 毛毛虫 · 🐸 青蛙过河 · 🐝 小蜜蜂 · 🫧 泡泡拼单词 · 🐉 龙蛋配对 · 🍦 叠冰淇淋</td><td>每个游戏都有自己的标签页：编辑故事、单词、发音和设置（编辑方法完全一样，见第 5 节）。</td></tr>
     <tr><td>🦈 鲨鱼</td><td>说明如何编辑鲨鱼游戏的问题。</td></tr>
+    <tr><td>💻 本地运行</td><td>说明怎样不用网站、直接在电脑上运行游戏，并可以下载离线题目文件 <code>local-config.js</code>（见第 11 节）。</td></tr>
     <tr><td>📖 使用说明</td><td>就是你现在看的这份说明（也可以单独打开 <code>/teacher-guide.html</code>，并支持打印）。</td></tr>
   </table>
   <div class="warn box"><b class="t">⚠️ 老师自己玩游戏</b>用老师名字进入游戏时是“练习模式”，<b>成绩不会被保存</b>，可以放心试玩。</div>
@@ -219,7 +229,8 @@ read | 读 | 📖 | reed</pre>
     <tr><td>🫧 泡泡拼单词</td><td>每个词拼一次。字母泡泡 = 单词的字母 + 几个多余字母。</td><td><b>多余的字母</b>（0～4，默认 2；0 最简单）</td><td>使用 3～8 个字母的短词；没有“干扰词”。</td></tr>
     <tr><td>🐉 龙蛋配对</td><td>每局从故事里随机选几个词，每个词变成两颗蛋：英文词 + 表情（或中文）。</td><td><b>每局几对</b>（2～8，默认 6）</td><td>每个词都必须有表情或中文；没有“干扰词”。小屏幕建议 4～6 对。</td></tr>
   </table>
-  <p>每个游戏的奖励也不同：毛毛虫 → 蝴蝶，青蛙 → 皇冠，小蜜蜂 → 蜂蜜罐，泡泡 → 珍珠，龙蛋 → 金龙蛋。</p>
+  <p>🍦 <b>叠冰淇淋</b>：每局随机说出几种颜色（设置“叠几个球”3～7，“每次几种颜色”2～5）。颜色按英文名自动识别：red, orange, yellow, green, blue, purple, pink, brown, white, black, gray, gold, silver, light blue, dark green，以及口味 chocolate, vanilla, strawberry, mint, lemon, blueberry, cherry, banana, caramel, matcha 等。如果你的词不在里面，在“表情”一项写颜色代码，例如 <code>sky | 天空色 | #8FD3FF</code>。干扰词会作为额外的错误颜色出现（颜色太接近的会自动跳过）。</p>
+  <p>每个游戏的奖励也不同：毛毛虫 → 蝴蝶，青蛙 → 皇冠，小蜜蜂 → 蜂蜜罐，泡泡 → 珍珠，龙蛋 → 金龙蛋，冰淇淋 → 冰淇淋。</p>
 
   <h2 id="s6">6. 调整发音</h2>
   <p>游戏使用<b>浏览器/设备自带的英语语音</b>来读单词，不需要联网下载，但读音会因设备而略有不同。如果某个词读得不对（常见于人名、同形异音词，比如 <i>read</i>、<i>live</i>），可以自己“纠正”：</p>
@@ -263,16 +274,44 @@ read | 读 | 📖 | reed</pre>
     <p>相册保存在孩子正在使用的那台设备的浏览器里。换设备、清除浏览器数据或使用无痕模式，相册会重新开始。成绩记录（给老师看的）是保存在服务器上的，不受影响。</p></details>
   <details><summary>手机上屏幕太小，圆球太多？</summary>
     <p>圆球会自动缩小以适应屏幕。建议每个故事不超过 8 个词 + 3 个干扰词；横屏玩更舒服。</p></details>
+  <details><summary>直接打开文件夹时没有声音？</summary>
+    <p>离线模式也使用浏览器自带的英语语音。请用 Chrome 或 Edge 打开；第一次需要先点一下屏幕。如果仍然没有声音，请在系统设置里添加“英语（美国）”语音。</p></details>
   <details><summary>网页打不开 / 显示错误？</summary>
     <p>先刷新页面。如果仍然不行，请联系网站管理员（见下一节）。</p></details>
 
   <h2 id="s10">10. 给网站管理员的说明</h2>
   <ul>
     <li>网站由普通静态文件 + 一个 PHP 文件（<code>api.php</code>）组成，数据保存在 <code>data/game.db</code>（SQLite）。主机需要 PHP 7.4+ 并启用 <code>pdo_sqlite</code>；<code>data/</code> 文件夹必须可写。</li>
-    <li>上传 <code>public/</code> 文件夹的<b>全部内容</b>到网站根目录：<code>index.html</code>、<code>shark/</code>、<code>caterpillar/</code>、<code>frog/</code>、<code>bee/</code>、<code>spell/</code>、<code>dragon/</code>、<code>admin/</code>、<code>shared/</code>、<code>teacher-guide.html</code>、<code>api.php</code>、<code>.htaccess</code>、<code>data/</code>。更新时<b>不要覆盖 <code>data/game.db</code></b>（学生成绩和你编辑的题目都在里面）。</li>
+    <li>上传 <code>public/</code> 文件夹的<b>全部内容</b>到网站根目录：<code>index.html</code>、<code>shark/</code>、<code>caterpillar/</code>、<code>frog/</code>、<code>bee/</code>、<code>spell/</code>、<code>dragon/</code>、<code>icecream/</code>、<code>admin/</code>、<code>shared/</code>、<code>teacher-guide.html</code>、<code>local-config.js</code>、<code>api.php</code>、<code>.htaccess</code>、<code>data/</code>。更新时<b>不要覆盖 <code>data/game.db</code></b>（学生成绩和你编辑的题目都在里面）。</li>
     <li>老师名字在 <code>api.php</code> 开头的 <code>TEACHER_NAME</code> 中设置（默认值请见项目 README）。修改后老师用新名字登录。</li>
     <li>所有页面不依赖外部网站（无外部字体、无 CDN），在中国大陆可以正常打开。</li>
   </ul>
+
+  <h2 id="s11">11. 不用网站，在电脑上直接运行（本地运行）</h2>
+  <p>没有网站或没有网络时，也可以在教室的电脑上直接运行所有游戏。有两种方法：</p>
+  <h3>方法一：直接打开文件夹（最简单）</h3>
+  <ol>
+    <li>把整个游戏文件夹复制到电脑上，例如桌面。</li>
+    <li>打开里面的 <code>public</code> 文件夹，双击 <code>index.html</code>。推荐用 <b>Chrome</b> 或 <b>Edge</b> 浏览器打开（右键 → 打开方式）。</li>
+    <li>首页上方会出现黄色提示“离线模式”。所有游戏都能玩、能发音。</li>
+  </ol>
+  <div class="warn box"><b class="t">⚠️ 离线模式的限制</b>不保存学生成绩；老师后台不需要登录，“成绩”页是空的；修改题目时“保存”会<b>下载一个文件</b> <code>local-config.js</code>（见下面）。</div>
+  <h3>方法二：用启动程序（保存成绩，平板也能连进来）</h3>
+  <ol>
+    <li>在电脑上安装 <b>Node.js 22.13 或更新的版本</b>（官网 nodejs.org；国内可以用镜像 npmmirror.com/mirrors/node/）。只需要安装一次。</li>
+    <li>在游戏文件夹里双击 <code>start-windows.bat</code>（苹果电脑双击 <code>start-mac.command</code>）。</li>
+    <li>会出现一个黑色窗口，浏览器自动打开游戏首页 <code>http://localhost:3000</code>。</li>
+    <li>黑色窗口里有一行 <code>network: http://192.168.x.x:3000</code>。同一个 Wi-Fi 下的平板、手机在浏览器里输入这个地址，就能一起玩，成绩都会保存。</li>
+    <li>上课时不要关闭黑色窗口；下课后关掉它就停止了。成绩和题目保存在文件夹里的 <code>data/game.db</code>。</li>
+  </ol>
+  <div class="tip box"><b class="t">提示</b>如果电脑没有安装 Node.js，双击 <code>start-windows.bat</code> 也会自动用方法一（离线模式）打开游戏。第一次运行时 Windows 可能询问是否允许网络访问——请选择“允许”，平板才能连接。</div>
+  <h3>把自己编辑的题目带到离线电脑上</h3>
+  <ol>
+    <li>在有网站（或方法二）的老师后台，打开 <b>💻 本地运行</b>，点击 <b>“⬇ 下载 local-config.js”</b>。这个文件包含所有游戏里你修改过的题目。</li>
+    <li>把下载的 <code>local-config.js</code> 复制到离线电脑的 <code>public</code> 文件夹里，<b>替换</b>原来的同名文件。</li>
+    <li>重新打开游戏就会使用你的题目。离线模式下在后台修改题目时，“保存”也会直接下载新的 <code>local-config.js</code>，同样放进 <code>public</code> 文件夹即可。</li>
+  </ol>
+  <p class="en">Offline: open public/index.html (results are not saved). With Node.js 22.13+: double-click start-windows.bat / start-mac.command. Custom rounds offline live in public/local-config.js — download it from Teacher admin → 💻 本地运行.</p>
 
   <footer>Shirley's English Games · 老师使用说明</footer>
 </div>
