@@ -86,6 +86,11 @@
   .chest .glow{opacity:0; transition:opacity .6s}
   .chest.open .glow{opacity:1}
   @media (prefers-reduced-motion:reduce){ .rays,.weed,.bub span,.octo .arm{animation:none} }
+  @media (max-height:520px){
+    .card{display:flex; align-items:center; gap:12px; padding:6px 16px 8px; width:auto; max-width:92%}
+    .card .pic{font-size:38px} .card .zhtxt{font-size:14px; white-space:nowrap} .slots{margin-top:0}
+    .octo{width:84px} .chest{width:76px}
+  }
 </style>
 </head>
 <body>

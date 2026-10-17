@@ -58,6 +58,43 @@
     if (!list.length && raw) return normalize(null, defs, minWords);
     return { settings: s, rounds: list };
   }
+  /*
+   * Раскладка по ячейкам: каждый вариант ответа получает свой прямоугольник, ничего не перекрывается.
+   * area {x,y,w,h}; aspect = высота/ширина элемента; вернёт размер элемента и ячейки (последний ряд по центру).
+   */
+  function cells(n, area, aspect, gap, maxCols) {
+    gap = gap == null ? 10 : gap; aspect = aspect || 1;
+    var best = null;
+    for (var cols = 1; cols <= Math.min(n, maxCols || n); cols++) {
+      var rows = Math.ceil(n / cols);
+      var cw = (area.w - (cols - 1) * gap) / cols, ch = (area.h - (rows - 1) * gap) / rows;
+      var size = Math.min(cw, ch / aspect);
+      if (!best || size > best.size + 0.5) best = { cols: cols, rows: rows, cw: cw, ch: ch, size: size };
+    }
+    var out = [];
+    for (var i = 0; i < n; i++) {
+      var r = Math.floor(i / best.cols), c = i % best.cols;
+      var inRow = r === best.rows - 1 ? n - (best.rows - 1) * best.cols : best.cols;
+      var off = (best.cols - inRow) * (best.cw + gap) / 2;
+      var x = area.x + off + c * (best.cw + gap), y = area.y + r * (best.ch + gap);
+      out.push({ x: x, y: y, w: best.cw, h: best.ch, cx: x + best.cw / 2, cy: y + best.ch / 2, row: r, col: c });
+    }
+    return { cells: out, size: best.size, cols: best.cols, rows: best.rows };
+  }
+
+  // Тонкое «зерно» плёнки для фактуры фона (генерируется один раз)
+  var grainURL = null;
+  function grain() {
+    if (grainURL) return grainURL;
+    try {
+      var c = document.createElement('canvas'); c.width = c.height = 140;
+      var x = c.getContext('2d'), img = x.createImageData(140, 140);
+      for (var i = 0; i < img.data.length; i += 4) { var v = Math.random() * 255; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
+      x.putImageData(img, 0, 0); grainURL = c.toDataURL();
+    } catch (e) { grainURL = ''; }
+    return grainURL;
+  }
+
   function joinWords(ws, kind) {
     var t = ws.map(function (x) { return x.w; });
     return kind === 'sentence' ? t.join(' ') + '.' : t.join(', ');
@@ -67,12 +104,13 @@
   function create(o) {
     var id = o.id, cfg = null, round = null, name = '', over = true;
     var st = { mistakes: 0, hints: 0, startedAt: 0, total: 0, done: 0, saveOk: false };
-    var cleanups = [], token = 0, idleTimer = null;
+    var cleanups = [], token = 0, idleTimer = null, resizeFns = [], lastSize = null, resizeT = 0;
     var zhOn = true;
     try { zhOn = localStorage.getItem('shirley.zh') !== '0'; } catch (e) {}
 
     document.title = o.title + ' ' + o.zh;
     var root = el('div', 'kgame' + (o.className ? ' ' + o.className : ''));
+    root.style.setProperty('--grain', 'url(' + grain() + ')');
     if (o.bg) root.style.background = o.bg;
     root.innerHTML =
       '<div class="khud">' +
@@ -187,8 +225,20 @@
     r2(endOv, 'again').addEventListener('click', function () { startRound(round); });
     r2(endOv, 'other').addEventListener('click', showMenu);
 
+    // Поворот экрана / изменение окна: игра перестраивает раскладку, прогресс не теряется
+    global.addEventListener('resize', function () {
+      clearTimeout(resizeT);
+      resizeT = setTimeout(function () {
+        if (!round || over || !resizeFns.length) return;
+        var w = stage.clientWidth, h = stage.clientHeight;
+        if (lastSize && Math.abs(w - lastSize.w) < 24 && Math.abs(h - lastSize.h) < 24) return;
+        lastSize = { w: w, h: h };
+        resizeFns.forEach(function (f) { try { f(w, h); } catch (e) { if (global.console) console.error(e); } });
+      }, 200);
+    });
+
     /* ---------- раунд ---------- */
-    function runCleanups() { var c = cleanups; cleanups = []; c.forEach(function (f) { try { f(); } catch (e) {} }); clearTimeout(idleTimer); }
+    function runCleanups() { resizeFns = []; var c = cleanups; cleanups = []; c.forEach(function (f) { try { f(); } catch (e) {} }); clearTimeout(idleTimer); }
 
     function startRound(r) {
       runCleanups(); token++;
@@ -201,12 +251,16 @@
       ref('round').textContent = r.emoji + ' ' + r.title;
       setProgress(0, r.words.length);
       stage.innerHTML = ''; hideBubble(); fx.clear(); fx.stopAmbient();
+      lastSize = { w: stage.clientWidth, h: stage.clientHeight };
+      stage.classList.remove('kenter'); void stage.offsetWidth; stage.classList.add('kenter');
       applyZh();
       var api = {
         stage: stage, root: root, round: r, items: r.words, decoys: r.decoys, settings: cfg.settings, fx: fx,
         progress: setProgress, speak: speak, bubble: showBubble, hideBubble: hideBubble,
         zh: function () { return zhOn; },
-        mistake: function (w, chosen, correct) { st.mistakes++; G.reportMistake(w, chosen, correct); },
+        mistake: function (w, chosen, correct) { st.mistakes++; G.reportMistake(w, chosen, correct); G.vibrate(35); },
+        onResize: function (f) { resizeFns.push(f); },
+        cells: cells,
         hinted: function () { st.hints++; },
         cleanup: function (f) { cleanups.push(f); },
         alive: function () { return my === token && !over; },
@@ -235,14 +289,14 @@
       r2(endOv, 'sw').textContent = wordsDone; r2(endOv, 'sm').textContent = st.mistakes; r2(endOv, 'stime').textContent = fmtTime(secs);
       var hint = r2(endOv, 'save'); hint.className = 'hint';
       if (G.player.role === 'teacher') hint.textContent = 'Teacher practice — not saved 老师练习，不保存成绩';
-      else if (!st.saveOk) { hint.className = 'hint err'; hint.textContent = 'Offline: result not saved 离线，成绩未保存'; }
+      else if (!st.saveOk) { hint.className = 'hint'; hint.textContent = G.fileMode ? '📁 Offline mode — results are not saved 离线模式，成绩不保存' : 'Offline: result not saved 离线，成绩未保存'; }
       else {
         hint.textContent = 'Saving… 保存中…';
         saving.then(function () { hint.textContent = 'Saved for ' + G.player.name + ' ✓ 已保存'; })
           .catch(function () { hint.className = 'hint err'; hint.textContent = 'Could not save 保存失败'; });
       }
       endOv.hidden = false;
-      fx.rainConfetti(2.2);
+      fx.rainConfetti(2.2); G.vibrate([30, 60, 30]);
     }
 
     /* ---------- имя ---------- */
@@ -263,5 +317,5 @@
     return { api: function () { return null; }, root: root, joinWords: joinWords };
   }
 
-  G.kit = { create: create, normalize: normalize, joinWords: joinWords, esc: esc, fmtTime: fmtTime };
+  G.kit = { create: create, normalize: normalize, joinWords: joinWords, esc: esc, fmtTime: fmtTime, cells: cells };
 })(window);

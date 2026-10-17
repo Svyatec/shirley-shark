@@ -83,7 +83,7 @@
     var items = api.items, decoys = api.decoys;
     var steps = G.shuffle(items), N = steps.length;
     var nF = clamp(parseInt(api.settings.flowers, 10) || 4, 3, 6);
-    var D = clamp(Math.min(W * 0.27, H * 0.17), 72, 120);
+    var D = 90;
     var k = 0, wrong = 0, locked = true, flowers = [], resetIdle, hintTimer = null, target = null;
     var styleExtra = document.createElement('style');
     styleExtra.textContent = '.jar .fill{transform-box:fill-box}';
@@ -111,7 +111,9 @@
 
     /* --- пчела: полёт по кривой Безье + зависание --- */
     var bee = el('div', 'bee'); var face = el('div'); face.style.cssText = 'width:100%;height:100%;transition:transform .25s'; face.innerHTML = beeSVG(); bee.appendChild(face); stage.appendChild(bee);
-    var B = { x: W * 0.5, y: H * 0.2, hx: W * 0.5, hy: H * 0.2, dir: 1, fly: null, lastX: W * 0.5, tilt: 0 };
+    // «Дом» пчелы: над цветами; на низком экране — справа, чтобы не закрывать кнопку «Listen»
+    function home() { return H < 520 ? { x: W * 0.86, y: H * 0.26 } : { x: W * 0.5, y: H * 0.2 }; }
+    var B = { x: home().x, y: home().y, hx: home().x, hy: home().y, dir: 1, fly: null, lastX: home().x, tilt: 0 };
     var raf = 0, lastT = 0, babies = [];
     function easeIO(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
     function loop(t) {
@@ -150,26 +152,34 @@
     }
 
     /* --- цветы --- */
-    function place(n) {
-      var pts = [], minD = D * 1.18;
-      for (var i = 0; i < n; i++) {
-        var best = null;
-        for (var t = 0; t < 80; t++) {
-          var x = D * 0.7 + Math.random() * (W - D * 1.4), y = H * 0.3 + Math.random() * H * 0.34;
-          var ok = pts.every(function (q) { return Math.hypot((q.x - x) * 0.85, (q.y - y) * 1.15) > minD; });
-          if (ok) { best = { x: x, y: y }; break; }
-        }
-        if (!best) best = { x: W * (0.15 + 0.7 * (i + 0.5) / n), y: H * (0.34 + 0.2 * (i % 2)) };
-        pts.push(best);
-      }
-      return pts;
+    // Каждый цветок живёт в своей ячейке: головки, подписи и перевод никогда не перекрываются
+    function flowerArea() {
+      var short = H < 520;
+      var top = short ? listen.offsetTop + listen.offsetHeight + 8 : Math.max(H * 0.27, listen.offsetTop + listen.offsetHeight + 70);
+      var bottom = H - (short ? 26 : Math.max(96, Math.min(130, H * 0.16)));
+      return { x: 10, y: top, w: W - 20, h: Math.max(140, bottom - top) };
     }
-    function makeFlower(o, x, y, hue, delay) {
+    function layoutFlowers(list) {
+      var g = api.cells(list.length, flowerArea(), 1.3, 12);
+      D = clamp(g.size * 0.94, 60, 128);
+      list.forEach(function (f, i) {
+        var c = g.cells[f._slot != null ? f._slot : i];
+        var freeX = Math.max(0, (c.w - D) / 2), freeY = Math.max(0, (c.h - D * 1.3) / 2);
+        var x = c.cx + freeX * 0.55 * f._jx, y = c.y + freeY + D / 2 + freeY * 0.55 * f._jy;
+        f.style.left = (x - D / 2) + 'px'; f.style.top = (y - D / 2) + 'px';
+        f.style.width = D + 'px'; f.style.height = (H - (y - D / 2)) + 'px'; f.style.setProperty('--D', D + 'px');
+        f.style.zIndex = 4 + c.row;
+        var l = f.querySelector('.lbl');
+        if (l) l.style.fontSize = Math.max(10, Math.min(D * 0.2, (D * 0.44) / (l.textContent.length * 0.56))) + 'px';
+      });
+    }
+    function makeFlower(o, slot, hue, delay) {
       var f = el('button', 'flower'); f.type = 'button';
-      f.style.cssText = 'left:' + (x - D / 2) + 'px;top:' + (y - D / 2) + 'px;width:' + D + 'px;height:' + (H - (y - D / 2)) + 'px;--D:' + D + 'px;--del:' + (-Math.random() * 4).toFixed(2) + 's;--sw:' + ((Math.random() - 0.5) * 4).toFixed(1) + 'deg;animation-delay:' + delay + 's,0s';
+      f._slot = slot; f._jx = Math.random() * 2 - 1; f._jy = Math.random() * 2 - 1;
+      f.style.cssText = '--del:' + (-Math.random() * 4).toFixed(2) + 's;--sw:' + ((Math.random() - 0.5) * 4).toFixed(1) + 'deg;animation-delay:' + delay + 's,0s';
       f.innerHTML = '<span class="stem"></span><span class="head">' + flowerHeadSVG(hue) + '</span>';
       if (o) {
-        var l = el('span', 'lbl', o.w); l.style.fontSize = Math.max(10, Math.min(D * 0.2, (D * 0.44) / (o.w.length * 0.56))) + 'px'; f.appendChild(l);
+        f.appendChild(el('span', 'lbl', o.w));
         if (o.zh) f.appendChild(el('span', 'zz zhline', o.zh));
         f.setAttribute('aria-label', o.w);
       }
@@ -182,13 +192,14 @@
       target = steps[k]; wrong = 0;
       var pool = items.concat(decoys).filter(function (x) { return x.w.toLowerCase() !== target.w.toLowerCase(); });
       var opts = G.shuffle([target].concat(G.shuffle(pool).slice(0, nF - 1)));
-      var pts = place(opts.length), hs = G.shuffle(FLOWER_HUES);
+      var hs = G.shuffle(FLOWER_HUES);
       flowers = opts.map(function (o, i) {
-        var f = makeFlower(o, pts[i].x, pts[i].y, hs[i % hs.length], 0.1 + i * 0.12);
+        var f = makeFlower(o, i, hs[i % hs.length], 0.1 + i * 0.12);
         f._ok = o.w.toLowerCase() === target.w.toLowerCase(); f._o = o;
         f.addEventListener('click', function () { onFlower(f); });
         return f;
       });
+      layoutFlowers(flowers);
       setTimeout(function () { if (api.alive()) { api.speak(target); locked = false; } }, 600);
       resetIdle = api.idle(function () { hint(); });
     }
@@ -248,7 +259,7 @@
       await sleep(300);
       flowers.forEach(function (x) { x.remove(); });
       if (k >= N) { finale(); return; }
-      await flyTo(W * 0.5, H * 0.2, 650); if (!api.alive()) return;
+      await flyTo(home().x, home().y, 650); if (!api.alive()) return;
       spawn();
     }
 
@@ -264,8 +275,9 @@
       for (var i = 0; i < cnt; i++) {
         (function (i) {
           setTimeout(function () {
-            var x = W * (i + 0.5) / cnt, y = H * (0.66 + 0.1 * ((i * 7) % 3) / 2);
-            var f = makeFlower(null, x, y, hs[i % hs.length], 0); f.classList.add('bloom'); f.style.pointerEvents = 'none';
+            var x = W * (i + 0.5) / cnt, y = H * (0.66 + 0.1 * ((i * 7) % 3) / 2), d = clamp(W / cnt * 1.5, 60, 120);
+            var f = makeFlower(null, 0, hs[i % hs.length], 0); f.classList.add('bloom'); f.style.pointerEvents = 'none';
+            f.style.left = (x - d / 2) + 'px'; f.style.top = (y - d / 2) + 'px'; f.style.width = d + 'px'; f.style.height = (H - y + d / 2) + 'px'; f.style.setProperty('--D', d + 'px'); f.style.zIndex = 4 + (i % 3);
             var h = headCenter(f); fx.sparkle(h.x, h.y, 8);
           }, 350 + i * 140);
         })(i);
@@ -284,6 +296,11 @@
       api.complete(N);
     }
 
+    api.onResize(function (w, h) {
+      W = w; H = h;
+      if (!B.fly) { B.hx = home().x; B.hy = home().y; }
+      layoutFlowers(flowers.filter(function (f) { return f.isConnected; }));
+    });
     api.progress(0, N);
     setTimeout(spawn, 500);
   }

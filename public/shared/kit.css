@@ -1,5 +1,5 @@
 /* Каркас игр (kit.js): HUD, оверлеи, меню, карточка конца. Стиль — «клэй»: толстые мягкие формы, двойные тени. */
-.kgame{position:relative; height:100dvh; min-height:480px; display:flex; flex-direction:column; overflow:hidden; isolation:isolate; user-select:none; -webkit-user-select:none}
+.kgame{position:relative; height:100dvh; min-height:280px; display:flex; flex-direction:column; overflow:hidden; isolation:isolate; user-select:none; -webkit-user-select:none}
 .khud{display:flex; align-items:center; gap:8px; padding:calc(10px + env(safe-area-inset-top)) 12px 6px; position:relative; z-index:30; flex-wrap:wrap}
 .kchip{
   background:rgba(255,255,255,.95); border-radius:999px; padding:8px 14px; font-weight:900; font-size:15px;
@@ -63,3 +63,11 @@ body.nozh .zhline{display:none}
   .kchip{padding:5px 8px; font-size:12px}
   .kchip.round{max-width:28vw}
 }
+
+/* --- фактура: плёночное зерно + мягкая виньетка (поверх сцены, под HUD) --- */
+.kgame::before{content:""; position:absolute; inset:0; z-index:27; pointer-events:none;
+  background:radial-gradient(ellipse 120% 90% at 50% 45%, transparent 58%, rgba(10,10,40,.22) 100%)}
+.kgame::after{content:""; position:absolute; inset:0; z-index:28; pointer-events:none; background-image:var(--grain); background-size:140px 140px; opacity:.06; mix-blend-mode:overlay}
+.kstage.kenter{animation:kenter .7s cubic-bezier(.2,.8,.2,1)}
+@keyframes kenter{0%{clip-path:circle(0% at 50% 55%); filter:brightness(1.4)} 100%{clip-path:circle(150% at 50% 55%); filter:none}}
+@media (prefers-reduced-motion:reduce){ .kstage.kenter{animation:none} }

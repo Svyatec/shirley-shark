@@ -80,16 +80,20 @@
     api.cleanup(function () { fx.stopAmbient(); cancelAnimationFrame(raf); });
 
     /* раскладка яиц */
-    var top = 84, availH = H - top - 14, gap = 12, best = { E: 0, c: 3 };
-    for (var c = 2; c <= 6; c++) {
-      var rows = Math.ceil(cards.length / c);
-      var E = Math.min((W - 24 - (c - 1) * gap) / c, ((availH - (rows - 1) * gap) / rows) / 1.18);
-      if (E > best.E) best = { E: E, c: c };
-    }
-    var E = Math.min(130, Math.floor(best.E));
-    var grid = el('div', 'grid');
-    grid.style.cssText = 'top:' + top + 'px;bottom:14px;grid-template-columns:repeat(' + best.c + ',' + E + 'px);--E:' + E + 'px;--gap:' + gap + 'px';
+    var grid = el('div', 'grid'), E = 80;
     stage.appendChild(grid);
+    // яйца — сетка без перекрытий, размер и число колонок под текущий экран
+    function layoutGrid() {
+      var top = 84, gap = H < 520 ? 8 : 12;
+      var g = api.cells(cards.length, { x: 12, y: top, w: W - 24, h: H - top - 12 }, 1.18, gap);
+      E = Math.min(130, Math.floor(g.size));
+      grid.style.cssText = 'top:' + top + 'px;bottom:12px;grid-template-columns:repeat(' + g.cols + ',' + E + 'px);--E:' + E + 'px;--gap:' + gap + 'px';
+      cards.forEach(function (cd) {
+        if (!cd.el || cd.type !== 'word') return;
+        var w = cd.el.querySelector('.word'); if (w) w.style.setProperty('--fs', Math.max(11, Math.min(E * 0.2, (E * 0.86) / (cd.it.w.length * 0.6))) + 'px');
+      });
+    }
+    layoutGrid();
 
     cards.forEach(function (cd, i) {
       var hue = HUES[cd.pair % HUES.length];
@@ -240,6 +244,7 @@
       api.complete(P);
     }
 
+    api.onResize(function (w, h) { W = w; H = h; layoutGrid(); });
     api.progress(0, P);
   }
 

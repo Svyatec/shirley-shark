@@ -106,10 +106,12 @@
 
     /* пузыри: свободное плавание + мягкое отталкивание */
     var areaTop = 0, areaBot = H * 0.8, BS = 60;
-    function measureArea() {
+    function measureArea(n) {
+      n = n || Math.max(1, bubbles.filter(function (b) { return !b.gone; }).length) || 8;
       // offsetTop/offsetHeight — без учёта анимации появления карточки (она в этот момент уменьшена)
-      areaTop = card.offsetTop + card.offsetHeight + 12; areaBot = H * 0.8;
-      BS = clamp(Math.min(W * 0.17, (areaBot - areaTop) * 0.24), 50, 80);
+      areaTop = card.offsetTop + card.offsetHeight + 12; areaBot = H * (H < 520 ? 0.9 : 0.8);
+      var area = W * Math.max(60, areaBot - areaTop);
+      BS = clamp(Math.min(W * 0.17, (areaBot - areaTop) * 0.45, Math.sqrt(area / n) * 0.72), 40, 80);
     }
     function makeBubbles(letters) {
       bubbles.forEach(function (b) { b.el.remove(); }); bubbles = [];
@@ -152,6 +154,12 @@
         if (sp > max) { b.vx *= max / sp; b.vy *= max / sp; }
         b.x += b.vx * dt; b.y += b.vy * dt;
         var r = BS / 2;
+        // жёсткое расталкивание: пузыри никогда не перекрывают друг друга
+        live.forEach(function (q) {
+          if (q === b || q.fly) return;
+          var dx = b.x - q.x, dy = b.y - q.y, d = Math.hypot(dx, dy) || 0.01, min = BS * 1.04;
+          if (d < min) { var o2 = (min - d) / 2; b.x += dx / d * o2; b.y += dy / d * o2; q.x -= dx / d * o2; q.y -= dy / d * o2; }
+        });
         if (b.x < r + 4) { b.x = r + 4; b.vx = Math.abs(b.vx); } if (b.x > W - r - 4) { b.x = W - r - 4; b.vx = -Math.abs(b.vx); }
         if (b.y < areaTop + r) { b.y = areaTop + r; b.vy = Math.abs(b.vy); } if (b.y > areaBot - r) { b.y = areaBot - r; b.vy = -Math.abs(b.vy); }
         if (!b.el.getAnimations().length) b.el.style.transform = 'translate(' + (b.x - r) + 'px,' + (b.y - r) + 'px)';
@@ -186,11 +194,11 @@
       });
       card.querySelector('.ear').addEventListener('click', function () { G.ac(); api.speak(target); });
       skipNonLetters(); markNext();
-      measureArea();
       var letters = chars.filter(isLetter);
       var abc = 'abcdefghijklmnopqrstuvwxyz'.split('').filter(function (c) { return target.w.toLowerCase().indexOf(c) < 0; });
       var extras = G.shuffle(abc).slice(0, extra);
       var upper = target.w === target.w.toUpperCase() && /[A-Z]/.test(target.w);
+      measureArea(letters.length + extras.length);
       makeBubbles(G.shuffle(letters.concat(extras.map(function (c) { return upper ? c.toUpperCase() : c; }))));
       setTimeout(function () { if (api.alive()) { api.speak(target); locked = false; } }, 650);
       resetIdle = api.idle(hint);
@@ -284,6 +292,10 @@
       api.complete(N);
     }
 
+    api.onResize(function (w, h) {
+      W = w; H = h; measureArea();
+      bubbles.forEach(function (b) { b.el.style.setProperty('--B', BS + 'px'); b.x = Math.min(Math.max(b.x, BS / 2 + 4), W - BS / 2 - 4); b.y = Math.min(Math.max(b.y, areaTop + BS / 2), areaBot - BS / 2); });
+    });
     api.progress(0, N);
     setTimeout(startWord, 400);
   }

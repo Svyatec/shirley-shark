@@ -106,9 +106,21 @@
     var N = answers.length;
     var hintAfter = api.settings.hintAfter;
 
-    var D = Math.max(70, Math.min(W * 0.26, H * 0.17, 120));
-    var ROW = Math.max(112, Math.min(H * 0.26, 180));
-    var baseY = H * 0.74;
+    var D, ROW, baseY, FW, FH;
+    // Размеры от экрана: ряд вариантов всегда ниже карточки-подсказки, кувшинки ряда не касаются друг друга
+    function computeLayout() {
+      var clueH = clue.childElementCount ? clue.offsetHeight : (H < 520 ? 100 : 136);
+      var clueBottom = 8 + clueH;
+      D = Math.max(56, Math.min(W * 0.24, H * 0.18, 120));
+      for (var t = 0; t < 30; t++) {
+        baseY = H - D * 0.62 - 6;
+        ROW = Math.min(190, baseY - (clueBottom + 10 + D / 2));
+        if (ROW >= D * 1.02 || D <= 56) break;
+        D -= 4;
+      }
+      ROW = Math.max(ROW, D * 0.9);
+      FW = D * 1.05; FH = FW * 0.92;
+    }
     var k = 0, wrong = 0, locked = true, hintTimer = null, resetIdle;
 
     /* ---------- сцена ---------- */
@@ -121,6 +133,7 @@
     // мир живёт в координатах stage: смещаем так, чтобы y стадии совпадал с y мира
     var clipTop = H * 0.11; world.style.top = -clipTop + 'px';
     var clue = el('div', 'clue'); stage.appendChild(clue);
+    computeLayout();
 
     fx.startAmbient('fireflies', 26, function () { var r = stage.getBoundingClientRect(); return { x: r.left, y: r.top + r.height * 0.18, w: r.width, h: r.height * 0.82 }; });
     api.cleanup(function () { fx.stopAmbient(); clearInterval(hintTimer); });
@@ -130,30 +143,37 @@
     var frog = el('div', 'frog'); frog.style.width = FW + 'px'; frog.style.height = FH + 'px';
     frog.innerHTML = frogSVG() + '<div class="crown">' + crownSVG(HUES[round.idx % HUES.length]) + '</div>';
     world.appendChild(frog);
-    function frogAt(cx, cy) { frog.style.left = (cx - FW / 2) + 'px'; frog.style.top = (cy - FH * 0.86) + 'px'; }
+    function frogAt(cx, cy) { frog.style.width = FW + 'px'; frog.style.height = FH + 'px'; frog.style.left = (cx - FW / 2) + 'px'; frog.style.top = (cy - FH * 0.86) + 'px'; }
+    function curPx() { return { x: cur.fx * W, y: rowY(cur.row) + cur.dy }; }
+    function placeFrog() { var p = curPx(); frogAt(p.x, p.y); }
     function rowY(i) { return baseY - i * ROW; }
 
     function screenOf(node) { return fx.center(node); }
 
     /* ---------- кувшинки ---------- */
-    function makePad(cx, cy, label, size, cls) {
-      var pad = el('button', 'pad ' + (cls || '')); pad.type = 'button';
+    // Кувшинка хранит логическую позицию (доля ширины, номер ряда) — при повороте экрана просто пересчитываем пиксели
+    function placePad(pad) {
+      var size = D * pad._scale, cx = pad._fx * W, cy = rowY(pad._row) + pad._dy;
       pad.style.width = size + 'px'; pad.style.height = size + 'px'; pad.style.left = (cx - size / 2) + 'px'; pad.style.top = (cy - size / 2) + 'px';
+      pad._cx = cx; pad._cy = cy;
+      var l = pad.querySelector('.lbl');
+      if (l) l.style.fontSize = Math.max(11, Math.min(size * 0.27, (size * 0.76) / (l.textContent.length * 0.56))) + 'px';
+    }
+    function makePad(fxr, row, dy, label, scale, cls) {
+      var pad = el('button', 'pad ' + (cls || '')); pad.type = 'button';
+      pad._fx = fxr; pad._row = row; pad._dy = dy; pad._scale = scale || 1;
       pad.style.setProperty('--del', (-Math.random() * 3).toFixed(2) + 's'); pad.style.setProperty('--rot', ((Math.random() - 0.5) * 4).toFixed(1) + 'deg');
       pad.innerHTML = padSVG(Math.round(Math.random() * 360), Math.round((Math.random() - 0.3) * 50));
-      if (label) {
-        var l = el('span', 'lbl', label);
-        var fs = Math.min(size * 0.27, (size * 0.76) / (label.length * 0.56));
-        l.style.fontSize = Math.max(11, fs) + 'px'; pad.appendChild(l); pad.setAttribute('aria-label', label);
-      }
+      if (label) { pad.appendChild(el('span', 'lbl', label)); pad.setAttribute('aria-label', label); }
       world.appendChild(pad);
+      placePad(pad);
       return pad;
     }
 
     // стартовая кувшинка с лягушкой
-    var cur = { x: W / 2, y: rowY(0) };
-    var startPad = makePad(cur.x, cur.y, 'GO!', D * 1.05, 'start done'); startPad.style.animation = 'padin .6s backwards';
-    frogAt(cur.x, cur.y);
+    var cur = { fx: 0.5, row: 0, dy: 0 };
+    var startPad = makePad(0.5, 0, 0, 'GO!', 1.05, 'start done'); startPad.style.animation = 'padin .6s backwards';
+    placeFrog();
     var candidates = [];
 
     function showRow() {
@@ -167,12 +187,10 @@
       if (opts.length === 2) xs = G.shuffle([0.28, 0.72]);
       opts = G.shuffle(opts);
       candidates = opts.map(function (o, i) {
-        var cx = W * (xs[i] + (Math.random() - 0.5) * 0.05), cy = rowY(k + 1) + (Math.random() - 0.5) * 14;
-        var pad = makePad(cx, cy, o.w, D);
+        var pad = makePad(xs[i] + (Math.random() - 0.5) * 0.05, k + 1, (Math.random() - 0.5) * 14, o.w, 1);
         pad.dataset.ok = o.w.toLowerCase() === target.w.toLowerCase() ? '1' : '0';
         pad.style.animationDelay = (0.25 + i * 0.1) + 's, 0s';
         pad.addEventListener('click', function () { onPad(pad, o); });
-        pad._cx = cx; pad._cy = cy;
         return pad;
       });
       // подсказка-картинка
@@ -231,6 +249,7 @@
       pad.classList.remove('hint'); pad.classList.add('done');
       var tx = pad._cx, ty = pad._cy;
       jump(tx, ty, ROW * 0.35, 640, function () {
+        cur = { fx: pad._fx, row: pad._row, dy: pad._dy }; placeFrog();
         var c = screenOf(pad);
         G.sfx.good(); fx.splash(c.x, c.y + 6, 14); fx.ring(c.x, c.y, '#fff', 10); fx.sparkle(c.x, c.y - 10, 12); fx.stars(c.x, c.y - 20, 6);
         api.speak(target);
@@ -245,7 +264,7 @@
 
     // прыжок лягушки по параболе с «резиной»
     function jump(tx, ty, arc, ms, done) {
-      var sx = cur.x, sy = cur.y, kf = [], steps = 14;
+      var p0 = curPx(), sx = p0.x, sy = p0.y, kf = [], steps = 14;
       for (var i = 0; i <= steps; i++) {
         var t = i / steps, dx = (tx - sx) * t, dy = (ty - sy) * t - arc * 4 * t * (1 - t);
         var sc = i === 0 ? [1, 1] : (t < 0.2 ? [0.92, 1.12] : (t > 0.88 ? [1.14, 0.86] : [0.94, 1.08]));
@@ -256,7 +275,7 @@
       var an = frog.animate(kf, { duration: ms, easing: 'cubic-bezier(.4,0,.6,1)' });
       setTimeout(function () { var c = screenOf(frog); fx.splash(c.x, c.y + FH * 0.3, 6); }, 10);
       an.onfinish = function () {
-        cur.x = tx; cur.y = ty; frogAt(tx, ty);
+        frogAt(tx, ty);
         fx.squash(frog, 380);
         done && done();
       };
@@ -280,6 +299,7 @@
       world.appendChild(lotus);
       setTimeout(function () {
         jump(lx, ly - LS * 0.12, ROW * 0.5, 800, function () {
+          cur = { fx: 0.5, row: N + 1, dy: 6 - LS * 0.12 };
           lotus.classList.add('open');
           var c = screenOf(frog);
           G.sfx.win(); fx.splash(c.x, c.y + 10, 24); fx.ring(c.x, c.y, '#FFE066', 14);
@@ -301,6 +321,13 @@
         });
       }, 900);
     }
+
+    api.onResize(function (w, h) {
+      W = w; H = h; computeLayout();
+      clipTop = H * 0.11; world.style.top = -clipTop + 'px';
+      Array.prototype.forEach.call(world.querySelectorAll('.pad'), placePad);
+      placeFrog(); pan();
+    });
 
     /* ---------- старт ---------- */
     api.progress(0, N);
